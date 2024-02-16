@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Line</title>
+  <style>
+    canvas {
+      border: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="myCanvas" width="500" height="500"></canvas>
+
+  <script>
+    // Get the canvas element
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // Initial coordinates of point1
+    var x1 = 100;
+    var y1 = 100;
+
+    // Initial coordinates of point2
+    var x2 = 275;
+    var y2 = 400;
+
+    // Setting up key variable
+    let isUpKeyPressed = false;
+    let isDownKeyPressed = false;
+
+    function drawLine() {
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw a line between point1 and point2
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // CAll the update function to Update the position of point2 for the next frame
+
+      // Request the next animation frame
+      requestAnimationFrame(drawLine);
+    }
+
+    function updateLinePosition() {
+        if (isUpKeyPressed){
+            x2 += 1
+            y2 += 1
+        };
+
+        if(isDownKeyPressed){
+            x2 -= 1
+            y2 -= 1
+        };
+
+    }
+
+    // Event listener for keydown event
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowUp') {
+            isUpKeyPressed = true;
+            //updateLinePosition(); // Start the rotation immediately on key press
+        }
+    });
+
+        // Event listener for keyup event
+    window.addEventListener('keyup', function(event) {
+        if (event.key === 'ArrowUp') {
+            isUpKeyPressed = false;
+        }
+    });
+
+    // Event listener for down arrow
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowDown') {
+            isDownKeyPressed = true;
+            //updateLinePosition();
+        }
+    });
+
+    window.addEventListener('keyup', function(event) {
+        if (event.key === 'ArrowDown') {
+            isDownKeyPressed = false;
+        }
+    });
+    
+
+    // Start the animation
+    drawLine();
+    updateLinePosition();
+  </script>
+</body>
+</html>

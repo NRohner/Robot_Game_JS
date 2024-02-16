@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Line</title>
+  <style>
+    canvas {
+      border: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="myCanvas" width="500" height="500"></canvas>
+
+  <script>
+    // Get the canvas element
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // Initial coordinates of point1
+    var x1 = 250;
+    var y1 = 250;
+
+    
+
+    // Physics constants and variables
+    const g = 9.81;
+    const m = 1;    // mass in kg
+    const L = 100;    // Lenght in cm of the full bar.
+    const pi = 3.14159;
+    const deltaT = 0.01; // This is our time step in seconds
+    const I = 1; // Moment of inertia. Just a dummy value for now.
+    const r_length = 0.5;    // the length in m to the cog of the bar. Basically the magnitude of r at all times
+    var thetha = 0; // radians
+    var w = 0;      // radians per second
+    var t = 0;      // time in seconds
+    var r = [0.5, 0];   //radius vector to the center of gravity
+    var F = [0, g];     //force vector for the force of gravity acting on the bar
+
+
+    // Initial coordinates of point2
+    var x2 = L * Math.cos(thetha) + 250;
+    var y2 = L * Math.sin(thetha) + 250;
+    console.log(x2);
+    console.log(y2);
+
+
+    // Setting up key variable
+    let isUpKeyPressed = false;
+    let isDownKeyPressed = false;
+    let isSpaceKeyPressed = false;
+    let isRightKeyPressed = false;
+    let isLeftKeyPressed = false;
+
+    function crossProduct_2D(vector1, vector2) {
+        if (vector1.length !== 2 || vector2.length !== 2) {
+        throw new Error("Cross product is only defined for 2D vectors");
+        }
+
+        return vector1[0] * vector2[1] - vector1[1] * vector2[0];
+    }
+
+
+    function drawLine() {
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw a line between point1 and point2
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
+    
+        updateLinePosition()     // Im trying to have this wait and only call this every 10ms (0.01s) so that it lines up with the time step of the simulation
+    
+      
+
+        // Request the next animation frame
+        requestAnimationFrame(drawLine);
+    }
+    
+    function updateLinePosition() {
+        let T = crossProduct_2D(r, F);
+        console.log(T);
+        let w_0 = w;
+        let friction = 0;
+        if (w > 0) {
+            friction = -1 * (w_0 ** 2) * 0.5
+        }
+        else {
+            friction = (w_0 ** 2) * 0.5
+        }
+
+        // If statement for right arrow key
+        if (isRightKeyPressed) {
+            T = T - 8;
+        }
+        else {
+
+        }
+
+        // If statement for left arrow key
+        if (isLeftKeyPressed) {
+            T = T + 8;
+        }
+        else{
+            
+        }
+        
+        T = T + friction
+        let alpha = T / I;
+        
+        w = w_0 + (alpha * deltaT);
+        let deltaThetha = (w_0 * deltaT) + (((0.5 * alpha)) * (deltaT ** 2));
+        thetha = thetha + deltaThetha;
+
+
+        r = [(r_length * Math.cos(thetha)), (r_length * Math.sin(thetha))];
+        x2 = (L * Math.cos(thetha) + 250)
+        y2 = (L * Math.sin(thetha) + 250)
+        
+    }
+    
+
+    // Event listener for right arrow key
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowRight') {
+            isRightKeyPressed = true;
+            //updateLinePosition(); // Start the rotation immediately on key press
+        }
+    });
+
+    // Event listener for keyup event
+    window.addEventListener('keyup', function(event) {
+        if (event.key === 'ArrowRight') {
+            isRightKeyPressed = false;
+        }
+    });
+
+    // Event listener for left arrow key
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowLeft') {
+            isLeftKeyPressed = true;
+            //updateLinePosition(); // Start the rotation immediately on key press
+        }
+    });
+
+    // Event listener for keyup event
+    window.addEventListener('keyup', function(event) {
+        if (event.key === 'ArrowLeft') {
+            isLeftKeyPressed = false;
+        }
+    });
+
+
+    // Start the animation
+    drawLine();
+  </script>
+</body>
+</html>

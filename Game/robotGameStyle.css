@@ -1,0 +1,69 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  
+  /* setting attributes for our different game objects*/
+  
+  #game {
+    width: 500px;
+    height: 500px;
+    border: 2px solid black;
+    position: relative;
+  }
+  
+  #primaryArmL,
+  #primaryArmR,
+  #secondaryArmL,
+  #secondaryArmR {
+    position: absolute;
+    height: 2px;
+    background-color: transparent;
+    transform-origin: left center;
+  }
+  
+  #primaryArmL {
+    background-color: red;
+    width: 100px;
+    transform: translate(0, 0) rotate(45deg);
+  }
+  
+  #primaryArmR {
+    background-color: orange;
+    width: 100px;
+    transform: translate(100px, 0) rotate(-45deg);
+  }
+  
+  #secondaryArmL {
+    background-color: green;
+    width: 200px;
+    transform: translate(200px, 0) rotate(90deg);
+  }
+  
+  #secondaryArmR {
+    background-color: blue;
+    width: 300px;
+    transform: translate(300px, 0) rotate(90deg);
+  }
+  
+  .animate {
+    /* creating a class called animate */
+    animation: jump 500ms;
+  }
+  
+  @keyframes jump {
+    0% {
+      top: 150px;
+    }
+    30% {
+      top: 100px;
+    }
+    70% {
+      top: 100px;
+    }
+    100% {
+      top: 150px;
+    }
+  }
+  

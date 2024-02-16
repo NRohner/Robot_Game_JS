@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spinning Line</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 500px;
+            height: 500px;
+            margin-top: -250px; /* Half of the height */
+            margin-left: -250px; /* Half of the width */
+            border: 2px solid black;
+        }
+
+        #line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0% 0%;
+            width: 100px;
+            height: 5px;
+            background-color: black;
+        }
+
+        #point {
+            position: absolute;
+            top: 200px;
+            left: 200px;
+            width: 10px;
+            height: 10px;
+            background-color: blue;
+        }
+
+        #line2 {
+            position: absolute;
+            top: 200px;
+            left: 200px;
+            transform-origin: 0px 0px;
+            width: 100px;
+            height: 5px;
+            background-color: salmon;
+
+        }
+    </style>
+</head>
+<body>
+    <div id="frame"></div>
+    <div id="line"></div>
+    <div id="point"></div>
+    <div id="line2"></div>
+
+    <script>
+        // Get the line element
+        const line = document.getElementById('line');
+        const line2 = document.getElementById('line2');
+
+        // Setting the center of rotation for line 2
+        const line2_COR = [200, 200];
+
+        // Initialize angle variable
+        let angle = 0;
+        var angle2 = 0;
+
+        // Variable to track whether the up arrow key is pressed
+        let isUpKeyPressed = false;
+
+        // Function to update line 2 position
+        function spinLine2() {
+            var x2 = line2_COR[0]
+            var y2 = line2_COR[1]
+            if (isUpKeyPressed) {
+                angle2 += 0.01;
+                // Performing the rotation
+                line2.style.transform = `translate(${0}px, ${0}px) rotate(${angle2}rad)`;
+                
+            }
+
+            //Request the next animation frame
+            requestAnimationFrame(spinLine2);
+
+        }
+
+
+        // Function to update the line's position
+        function updateLinePosition() {
+            if (isUpKeyPressed) {
+                const radius = 250; // Half of the frame size
+                const x = radius * Math.cos(angle);
+                const y = radius * Math.sin(angle);
+
+                // Set the line's position
+                line.style.transform = `translate(${x}px, ${y}px) rotate(${angle}rad)`;
+
+                // Update the angle for the next frame
+                angle += 0.01; // You can adjust the rotation speed here
+            }
+
+            // Request the next animation frame
+            requestAnimationFrame(updateLinePosition);
+        }
+
+        // Event listener for keydown event
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowUp') {
+                isUpKeyPressed = true;
+                updateLinePosition(); // Start the rotation immediately on key press
+                spinLine2();
+            }
+        });
+
+        // Event listener for keyup event
+        window.addEventListener('keyup', function(event) {
+            if (event.key === 'ArrowUp') {
+                isUpKeyPressed = false;
+            }
+        });
+    </script>
+</body>
+</html>

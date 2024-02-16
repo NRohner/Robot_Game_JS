@@ -1,0 +1,41 @@
+
+<script>
+    // Array Manipulation:
+    var ourArray = ["Stimpson", "J", "cat"];
+    ourArray.push(["happy", "joy"]);
+    // push is the exact same as .append() in python. It adds whatever you put inside the () to the end of the array
+    // In this case, our array will now read ["Stimpson", "J", "cat", ["happy", "joy"]]
+
+    var myArray = [["John", 23], ["cat", 2]]
+    myArray.push(["Dog", 3])
+
+
+    // .pop() kind of the opposite of push. It takes the value in an array, removes it from the array, and stores it in a variable.
+    // For example:
+
+    var array = [1, 2, 3];
+    var resultOfPop = array.pop();
+    // array should now equal [1, 2] and resultOfPop should be 3
+
+    console.log(array)
+    console.log(resultOfPop)
+
+
+    // .shift() is exactly like .pop() but it takes from the start of the array, not the end
+
+    var shiftArray = [1, 2, 3]
+    var resultOfShift = shiftArray.shift()
+
+    console.log(shiftArray)
+    console.log(resultOfShift)
+
+    // .unshift() is the exact opposide of .shift(). It adds to the front of the arry. Like append but from the front
+
+    var list = [1,2,3]
+    list.unshift(0)
+
+    console.log(list)
+
+
+
+</script>

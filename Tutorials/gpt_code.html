@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Line Animation</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    #line {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 10;
+      height: 2px;
+      background-color: black;
+      transform-origin: left center;
+      animation: drawLine 3s linear infinite;
+    }
+
+    @keyframes drawLine {
+      0% {
+        width: 0;
+      }
+      100% {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="line"></div>
+
+  <script>
+    // You can add JavaScript code here if needed
+  </script>
+</body>
+</html>
