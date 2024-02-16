@@ -54,7 +54,7 @@
             this.I = I;
 
             // Calculated variables - this is where the big math comes in lol
-            this.pos2 = findArcIntersect(primArmR, primeArmL)
+            this.pos2 = findArcIntersect(rightPrimaryArm, leftPrimaryArm)
         }
 
 
@@ -67,7 +67,7 @@
 
     // Setting our robot constants and initial conditions
     const primaryArmLen = 40;  //primary arm length in cm
-    const armGap = 50;          // distance between robot origin and the right motor in cm
+    const armGap = 15;          // distance between robot origin and the right motor in cm
     const secondaryArmLen = 85; //secondary arm length in cm
     const motorTorque = 800;    // Motor torque in who knows what units lol. Im mixing cm and m to much here. Just puting in numbers that make things play nice at this point.
     const min_theta_r = -0.523599;  //15 degrees above horizontal
