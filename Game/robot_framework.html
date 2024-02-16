@@ -41,22 +41,46 @@
             this.cogVector = [(Math.cos(this.theta) * (this.length / 2)), (Math.sin(this.theta) * (this.length / 2))]   // Vector to the COG of the primary arm
         }
     }
+    
+    //Creating a secondary arm class
+    class SecondaryArm {
+        constructor(type, parent, length, m, I) {
+            this.type = type;
+            this.parent = parent;   //The primary arm this secondary arm is attached to
+            this.length = length;
+            
+            this.pos1 = parent.pos2;
+            this.m = m;
+            this.I = I;
+
+            // Calculated variables - this is where the big math comes in lol
+            this.pos2 = findArcIntersect(primArmR, primeArmL)
+        }
+
+
+
+    }
+    
 
     // Creating our draw list
     var drawList = [];
 
     // Setting our robot constants and initial conditions
-    const primaryArmLen = 100;  //primary arm length in cm
+    const primaryArmLen = 40;  //primary arm length in cm
     const armGap = 50;          // distance between robot origin and the right motor in cm
-    const secondaryArmLen = 75; //secondary arm length in cm
+    const secondaryArmLen = 85; //secondary arm length in cm
     const motorTorque = 800;    // Motor torque in who knows what units lol. Im mixing cm and m to much here. Just puting in numbers that make things play nice at this point.
-    const min_theta_r = -0.261799;  //15 degrees above horizontal
-    const max_theta_r = Math.PI / 2; // Straight down is the max angle allowed. This may not be kinematically possible but lets see.
-    const min_theta_l = Math.PI / 2;
-    const max_theta_l = Math.PI + 0.261799;
+    const min_theta_r = -0.523599;  //15 degrees above horizontal
+    const max_theta_r = 1.661553; // Value in radians from the codian calculator so it should be a realistic value.
+    const min_theta_l = 1.480039;   // Value in radians from the codian calculator so it should be a realistic value.
+    const max_theta_l = Math.PI + 0.523599; // From the codian calculator
+    const tcp_diameter = 25;        // TCP diameter in cm
 
     const I_Primary = 1;                    // Moment of inertia for primary arm. Just a dummy value for now.
-    var mPrimaryArm = 1;            // mass of the primary arm in kg. We modulate this when payloads are picked up to simulate added weight.
+    const mPrimaryArm = 1;            // mass of the primary arm in kg. We modulate this when payloads are picked up to simulate added weight.
+
+    const I_Secondary = 1;
+    const mSecondaryArm = 1;
 
     // Motor coordinates of right primary arm in ROBOT COORDINATE SYSTEM
     var r_arm_1_robot = [armGap, 0];
@@ -67,9 +91,14 @@
     var theta_r = 0;    // radians - initial angle of right arm
     var theta_l = Math.PI;    // radians - initial angle of left arm
 
-    // Creating our upper arm objects
+    // Creating our primary arm objects
     var rightPrimaryArm = new PrimaryArm("primary" ,"r", primaryArmLen, theta_r, r_arm_1_robot, 0, mPrimaryArm, 0, I_Primary);
     var leftPrimaryArm = new PrimaryArm("primary" ,"l", primaryArmLen, theta_l, l_arm_1_robot, 0, mPrimaryArm, 0, I_Primary);
+
+    // Creating our secondary arm objects
+    var rightSecondaryArm = new SecondaryArm("secondary", rightPrimaryArm, secondaryArmLen, mSecondaryArm, I_Secondary);
+    var leftSecondaryArm = new SecondaryArm("secondary", leftPrimaryArm, secondaryArmLen, mSecondaryArm, I_Secondary);
+    
 
     // Adding our upper arm objects to the draw list
     drawList.push(rightPrimaryArm);
@@ -83,14 +112,12 @@
     // Physics constants and variables
     const g = 9.81;
     const pi = 3.14159;
-    const deltaT = 0.0005; // This is our time step in seconds
+    const deltaT = 0.001; // This is our time step in seconds
     
     const r_length = 50;    // the length in cm to the cog of the bar. Basically the magnitude of r at all times
     var thetha = 0; // radians
     var w = 0;      // radians per second
     var t = 0;      // time in seconds
-    //var r_COG_R = [50, 0];   //radius vector to the right arm center of gravity in cm and robot coordinates
-    //var r_COG_L = [-50, 0];     //radius vector to the cog of the left arm in cm and robot coordinates
     var F = [0, g];     //force vector for the force of gravity acting on the bar
 
     // Setting up key variable
@@ -118,6 +145,34 @@
         return canvasCoords
     } 
 
+    function findArcIntersect (primArmR, primeArmL) {     // finds the tcp location given the two primary arms and the secondary arm lenght
+        let a = primArmR.pos2[0];
+        let b = primArmR.pos2[1];
+        let c = primeArmL.pos2[0];
+        let d = primeArmL.pos2[1];
+        let r = secondaryArmLen;
+
+        // Ther could be 2 possible x values so were gonna solve for both and see what they are
+        // Seems like x_2 is an unrealistic value
+        var numerator = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c - Math.sqrt(
+        Math.pow(-4 * Math.pow(a, 3) + 4 * Math.pow(a, 2) * c - 4 * a * Math.pow(b, 2) + 8 * a * b * d + 4 * Math.pow(a, 2) * Math.pow(c, 2) - 4 * Math.pow(a, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * c + 8 * b * c * d - 4 * Math.pow(c, 3) - 4 * c * Math.pow(d, 2), 2) - 4 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2)) * (Math.pow(a, 4) + 2 * Math.pow(a, 2) * Math.pow(b, 2) - 4 * Math.pow(a, 2) * b * d - 2 * Math.pow(a, 2) * Math.pow(c, 2) + 2 * Math.pow(a, 2) * Math.pow(d, 2) + Math.pow(b, 4) - 4 * Math.pow(b, 3) * d + 2 * Math.pow(b, 2) * Math.pow(c, 2) + 6 * Math.pow(b, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * Math.pow(r, 2) - 4 * b * Math.pow(c, 2) * d - 4 * b * Math.pow(d, 3) + 8 * b * d * Math.pow(r, 2) + Math.pow(c, 4) + 2 * Math.pow(c, 2) * Math.pow(d, 2) + Math.pow(d, 4) - 4 * Math.pow(d, 2) * Math.pow(r, 2))) + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
+
+        var denominator = 2 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2));
+        var x = numerator / denominator;
+        /*
+        numerator = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c + Math.sqrt(Math.pow(-4 * Math.pow(a, 3) + 4 * Math.pow(a, 2) * c - 4 * a * Math.pow(b, 2) + 8 * a * b * d + 4 * a * Math.pow(c, 2) - 4 * a * Math.pow(d, 2) - 4 * Math.pow(b, 2) * c + 8 * b * c * d - 4 * Math.pow(c, 3) - 4 * c * Math.pow(d, 2), 2) - 4 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2)) * (Math.pow(a, 4) + 2 * Math.pow(a, 2) * Math.pow(b, 2) - 4 * Math.pow(a, 2) * b * d - 2 * Math.pow(a, 2) * Math.pow(c, 2) + 2 * Math.pow(a, 2) * Math.pow(d, 2) + Math.pow(b, 4) - 4 * Math.pow(b, 3) * d + 2 * Math.pow(b, 2) * Math.pow(c, 2) + 6 * Math.pow(b, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * Math.pow(r, 2) - 4 * b * Math.pow(c, 2) * d - 4 * b * Math.pow(d, 3) + 8 * b * d * Math.pow(r, 2) + Math.pow(c, 4) + 2 * Math.pow(c, 2) * Math.pow(d, 2) + Math.pow(d, 4) - 4 * Math.pow(d, 2) * Math.pow(r, 2)))) + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2);
+        denominator = 2 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2));
+
+        var x_2 = numerator / denominator;
+        */
+       var y = b + Math.sqrt(-Math.pow(a, 2) + 2 * a * x + Math.pow(r, 2) - Math.pow(x, 2));
+
+       console.log("x: " + x)
+       console.log("y: " + y)
+
+       return [x, y]
+    }
+
 
     function drawRobot() {
         // Clear the canvas
@@ -135,8 +190,11 @@
             ctx.stroke();
         }
 
+
+
         // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
         updatePosition();
+        findArcIntersect(rightPrimaryArm, leftPrimaryArm);
       
 
         // Request the next animation frame
