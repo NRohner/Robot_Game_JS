@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Line</title>
+  <style>
+    canvas {
+      border: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="myCanvas" width="500" height="500"></canvas>
+
+  <script>
+
+    /////////////////////////////////////////////////////////////////////////////////////////////
+    //      Roadmap and Plan
+    //  1. Update draw function so it draws all items in the draw list
+    //  2. 
+    //  3. 
+    //  4. 
+    //  5. 
+
+    //Creating a primary arm class
+    class PrimaryArm {
+        constructor(type, R_or_L, length, theta, pos1, w, m, T, I) {
+            this.type = type;
+            this.R_or_L = R_or_L;
+            this.length = length;
+            this.theta = theta;
+            this.pos1 = pos1;
+            this.w = w;
+            this.m = m;
+            this.T = T;
+            this.I = I;
+            //pos2 is the end point of the primary arm
+            this.pos2 = [((primaryArmLen * Math.cos(this.theta)) + pos1[0]), ((primaryArmLen * Math.sin(this.theta)) + pos1[1])];
+            this.cogVector = [(Math.cos(this.theta) * (this.length / 2)), (Math.sin(this.theta) * (this.length / 2))]   // Vector to the COG of the primary arm
+        }
+    }
+
+    // Creating our draw list
+    var drawList = [];
+
+    // Setting our robot constants and initial conditions
+    const primaryArmLen = 100;  //primary arm length in cm
+    const armGap = 50;          // distance between robot origin and the right motor in cm
+    const secondaryArmLen = 75; //secondary arm length in cm
+    const min_theta_r = -0.261799;  //15 degrees above horizontal
+    const max_that_r = Math.PI / 2; // Straight down is the max angle allowed. This may not be kinematically possible but lets see.
+    const I_Primary = 1;                    // Moment of inertia for primary arm. Just a dummy value for now.
+    var mPrimaryArm = 1;            // mass of the primary arm in kg. We modulate this when payloads are picked up to simulate added weight.
+
+    // Motor coordinates of right primary arm in ROBOT COORDINATE SYSTEM
+    var r_arm_1_robot = [armGap, 0];
+    // Motor coordinates of left primary arm in ROBOT COORDINATE SYSTEM
+    var l_arm_1_robot = [-1 * armGap, 0];
+
+    // Initial angle for the right and left arms.
+    var theta_r = 0;    // radians - initial angle of right arm
+    var theta_l = Math.PI;    // radians - initial angle of left arm
+
+    // Creating our upper arm objects
+    var rightPrimaryArm = new PrimaryArm("primary" ,"r", primaryArmLen, theta_r, r_arm_1_robot, 0, mPrimaryArm, 0, I_Primary);
+    var leftPrimaryArm = new PrimaryArm("primary" ,"l", primaryArmLen, theta_l, l_arm_1_robot, 0, mPrimaryArm, 0, I_Primary);
+
+    // Adding our upper arm objects to the draw list
+    drawList.push(rightPrimaryArm);
+    drawList.push(leftPrimaryArm);
+
+
+    // Get the canvas element
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // Physics constants and variables
+    const g = 9.81;
+    const pi = 3.14159;
+    const deltaT = 0.0005; // This is our time step in seconds
+    
+    const r_length = 50;    // the length in cm to the cog of the bar. Basically the magnitude of r at all times
+    var thetha = 0; // radians
+    var w = 0;      // radians per second
+    var t = 0;      // time in seconds
+    var r_COG_R = [50, 0];   //radius vector to the right arm center of gravity in cm and robot coordinates
+    var r_COG_L = [-50, 0];     //radius vector to the cog of the left arm in cm and robot coordinates
+    var F = [0, g];     //force vector for the force of gravity acting on the bar
+
+    // Setting up key variable
+    let isUpKeyPressed = false;
+    let isDownKeyPressed = false;
+    let isSpaceKeyPressed = false;
+    let isRightKeyPressed = false;
+    let isLeftKeyPressed = false;
+
+
+
+    function crossProduct_2D(vector1, vector2) {
+        if (vector1.length !== 2 || vector2.length !== 2) {
+        throw new Error("Cross product is only defined for 2D vectors");
+        }
+
+        return vector1[0] * vector2[1] - vector1[1] * vector2[0];
+    }
+
+
+    function convertRobotCoord_2_CanvasCoord (point) {
+        // takes a point in robot coordinates and converts it to canvas coordinates
+        // The origin of robot coordinates will map to (250, 100) in canvas coordinates
+        let canvasCoords = [(point[0] + 250), (point[1] + 100)]
+        return canvasCoords
+    } 
+
+
+    function drawRobot() {
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Looping through all items in drawList
+        for (var element of drawList) {
+            // Converting robot coordinate points to canvas coordinate points
+            let pos1_c = convertRobotCoord_2_CanvasCoord(element.pos1)
+            let pos2_c = convertRobotCoord_2_CanvasCoord(element.pos2)
+            // Drawing a line between the stard and end points of each item in the draw list
+            ctx.beginPath();
+            ctx.moveTo(pos1_c[0], pos1_c[1]);
+            ctx.lineTo(pos2_c[0], pos2_c[1]);
+            ctx.stroke();
+        }
+
+        // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
+        updatePosition();
+      
+
+        // Request the next animation frame
+        requestAnimationFrame(drawRobot);
+    }
+
+    function updatePrimaryArmPosition(arm) {
+        // This function updates the position of the primary arms
+        //console.log(arm.type)
+        if (arm.type != "primary") {
+
+        }
+
+        else {
+            // Update the position because these are primary arms
+            arm.T = crossProduct_2D( arm.cogVector, F);     // Torque on the arm due to the force of gravity
+            console.log(arm.T)
+            let w_0 = arm.w;
+            let friction = 0;
+            // Friction calculation
+            if (arm.w > 0) {
+                friction = -1 * (w_0 ** 2) * 0.5;
+            }
+            else {
+                friction = (w_0 ** 2) * 0.5;
+            }
+
+            arm.T = arm.T + friction;
+            let alpha = arm.T / arm.I;
+        
+            arm.w = w_0 + (alpha * deltaT);
+            let deltaTheta = (w_0 * deltaT) + (((0.5 * alpha)) * (deltaT ** 2));
+            arm.theta = arm.theta + deltaTheta;
+
+            arm.pos2[0] = (Math.cos(arm.theta) * arm.length) + arm.pos1[0];
+            arm.pos2[1] = (Math.sin(arm.theta) * arm.length) + arm.pos1[1];
+            arm.cogVector[0] = (Math.cos(arm.theta) * (arm.length / 2));
+            arm.cogVector[1] = (Math.sin(arm.theta) * (arm.length / 2));
+
+
+        }
+
+
+
+        // Key press stuff. Dont worry about this for now.
+        /*
+        // If statement for right arrow key
+        if (isRightKeyPressed) {
+            T_r = T_r - 8;
+        }
+        else {
+
+        }
+
+        // If statement for left arrow key
+        if (isLeftKeyPressed) {
+            T_r = T_r + 8;
+        }
+        else{
+            
+        }
+        */
+
+    }
+    
+    function updatePosition() {
+        // this updatePosition() function will just call a bunch of other functions that actually handle the moving of each of the points for the various arms
+        for (element in drawList) {
+            updatePrimaryArmPosition(drawList[element]);
+        }
+
+
+    }
+    
+
+    // Event listener for right arrow key
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowRight') {
+            isRightKeyPressed = true;
+            
+        }
+    });
+
+    // Event listener for keyup event
+    window.addEventListener('keyup', function(event) {
+        if (event.key === 'ArrowRight') {
+            isRightKeyPressed = false;
+        }
+    });
+
+    // Event listener for left arrow key
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowLeft') {
+            isLeftKeyPressed = true;
+            
+        }
+    });
+
+    // Event listener for keyup event
+    window.addEventListener('keyup', function(event) {
+        if (event.key === 'ArrowLeft') {
+            isLeftKeyPressed = false;
+        }
+    });
+
+
+    // Start the animation
+    drawRobot();
+  </script>
+</body>
+</html>
