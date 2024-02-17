@@ -60,7 +60,6 @@
 
 
     }
-    
 
     // Creating our draw list
     var drawList = [];
@@ -103,6 +102,8 @@
     // Adding our upper arm objects to the draw list
     drawList.push(rightPrimaryArm);
     drawList.push(leftPrimaryArm);
+    drawList.push(rightSecondaryArm);
+    drawList.push(leftSecondaryArm);
 
 
     // Get the canvas element
@@ -194,7 +195,6 @@
 
         // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
         updatePosition();
-        findArcIntersect(rightPrimaryArm, leftPrimaryArm);
       
 
         // Request the next animation frame
@@ -269,12 +269,21 @@
 
     }
     
+    function updateSecondaryArmPosition(arm) {
+        // Fill this out
+        arm.pos2 = findArcIntersect(rightPrimaryArm, leftPrimaryArm);
+
+    }
+
     function updatePosition() {
         // this updatePosition() function will just call a bunch of other functions that actually handle the moving of each of the points for the various arms
         for (element in drawList) {
             if (drawList[element].type == "primary") {
-                updatePrimaryArmPosition(drawList[element])
+                updatePrimaryArmPosition(drawList[element]);
+            } else if (drawList[element].type == "secondary") {
+                updateSecondaryArmPosition(drawList[element]);      // Need to create a function for this 
             }
+
         }
 
 
