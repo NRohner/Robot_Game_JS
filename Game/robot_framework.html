@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Animated Line</title>
+  <title>D2 Robot Framework</title>
   <style>
     canvas {
       border: 1px solid #000;
@@ -113,7 +113,7 @@
     // Physics constants and variables
     const g = 9.81;
     const pi = 3.14159;
-    const deltaT = 0.001; // This is our time step in seconds
+    const deltaT = 0.0001; // This is our time step in seconds
     
     const r_length = 50;    // the length in cm to the cog of the bar. Basically the magnitude of r at all times
     var thetha = 0; // radians
@@ -167,6 +167,7 @@
         var x_2 = numerator / denominator;
         */
        var y = b + Math.sqrt(-Math.pow(a, 2) + 2 * a * x + Math.pow(r, 2) - Math.pow(x, 2));
+       
 
        console.log("x: " + x)
        console.log("y: " + y)
@@ -181,15 +182,44 @@
         
         // Looping through all items in drawList
         for (var element of drawList) {
-            // Converting robot coordinate points to canvas coordinate points
-            let pos1_c = convertRobotCoord_2_CanvasCoord(element.pos1)
-            let pos2_c = convertRobotCoord_2_CanvasCoord(element.pos2)
-            // Drawing a line between the stard and end points of each item in the draw list
-            ctx.beginPath();
-            ctx.moveTo(pos1_c[0], pos1_c[1]);
-            ctx.lineTo(pos2_c[0], pos2_c[1]);
-            ctx.stroke();
+            if (element.type == "primary") {  // If its a primary arm, draw the arms and the circles
+                // Converting robot coordinate points to canvas coordinate points
+                let pos1_c = convertRobotCoord_2_CanvasCoord(element.pos1);
+                let pos2_c = convertRobotCoord_2_CanvasCoord(element.pos2);
+                // Drawing a line between the stard and end points of each item in the draw list
+                ctx.beginPath();
+                ctx.moveTo(pos1_c[0], pos1_c[1]);
+                ctx.lineTo(pos2_c[0], pos2_c[1]);
+                ctx.strokeStyle = 'black';
+                ctx.stroke();
+
+                // Drawing the circles at the end of the line
+                ctx.beginPath();
+                ctx.arc(pos2_c[0], pos2_c[1], secondaryArmLen, 0, 2 * Math.PI, false);
+                /* We dont want fill but if you did:
+                ctx.fillStyle = 'red';
+                ctx.fill();
+                */
+               ctx.lineWidth = 3;
+               ctx.strokeStyle = 'red';
+               ctx.stroke();
+               ctx.closePath();
+
+            } else {    // Else draw the secondary arms normally
+                // Converting robot coordinate points to canvas coordinate points
+                let pos1_c = convertRobotCoord_2_CanvasCoord(element.pos1);
+                let pos2_c = convertRobotCoord_2_CanvasCoord(element.pos2);
+                // Drawing a line between the stard and end points of each item in the draw list
+                ctx.beginPath();
+                ctx.moveTo(pos1_c[0], pos1_c[1]);
+                ctx.lineTo(pos2_c[0], pos2_c[1]);
+                ctx.strokeStyle = 'blue';
+                ctx.stroke();
+            }
         }
+
+        // For debuging only - drawing intersection circles at the ends of the primary arms
+
 
 
 

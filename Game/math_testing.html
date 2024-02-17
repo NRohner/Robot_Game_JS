@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Line</title>
+  <style>
+    canvas {
+      border: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="myCanvas" width="500" height="500"></canvas>
+
+  <script>
+
+    function findIntersect(point1, point2, r) {
+        
+        var x1 = findX1(point1, point2, r)
+        var x2 = findX2(point1, point2, r)
+
+    }
+
+    function findX1(point1, point2, r) {
+        a = point1[0];
+        b = point1[1];
+        c = point2[0];
+        d = point2[1];
+
+        // Calculating x1
+        // Calculate the discriminant
+        var discriminant = Math.sqrt(
+        Math.pow(4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c - Math.sqrt(
+            Math.pow(-4 * Math.pow(a, 3) + 4 * Math.pow(a, 2) * c - 4 * a * Math.pow(b, 2) + 8 * a * b * d + 4 * Math.pow(a, 2) * Math.pow(c, 2) - 4 * Math.pow(a, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * c + 8 * b * c * d - 4 * Math.pow(c, 3) - 4 * c * Math.pow(d, 2), 2) - 4 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2)) * (Math.pow(a, 4) + 2 * Math.pow(a, 2) * Math.pow(b, 2) - 4 * Math.pow(a, 2) * b * d - 2 * Math.pow(a, 2) * Math.pow(c, 2) + 2 * Math.pow(a, 2) * Math.pow(d, 2) + Math.pow(b, 4) - 4 * Math.pow(b, 3) * d + 2 * Math.pow(b, 2) * Math.pow(c, 2) + 6 * Math.pow(b, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * Math.pow(r, 2) - 4 * b * Math.pow(c, 2) * d - 4 * b * Math.pow(d, 3) + 8 * b * d * Math.pow(r, 2) + Math.pow(c, 4) + 2 * Math.pow(c, 2) * Math.pow(d, 2) + Math.pow(d, 4) - 4 * Math.pow(d, 2) * Math.pow(r, 2)))));
+        console.log("Discriminant 1: " + discriminant);
+        // Calculate the numerator and denominator - numerator is causing a problem right now
+        var numerator = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c - discriminant + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
+        var denominator = 2 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2));
+        
+        // Calculate the result
+        var result = numerator / denominator;
+
+        return result
+    }
+
+
+    function findX2(point1, point2, r) {
+        a = point1[0];
+        b = point1[1];
+        c = point2[0];
+        d = point2[1];
+
+        // Calculate the discriminant
+        var discriminant = Math.sqrt(
+        Math.pow(4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c + Math.sqrt(
+            Math.pow(-4 * Math.pow(a, 3) + 4 * Math.pow(a, 2) * c - 4 * a * Math.pow(b, 2) + 8 * a * b * d + 4 * Math.pow(a, 2) * Math.pow(c, 2) - 4 * Math.pow(a, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * c + 8 * b * c * d - 4 * Math.pow(c, 3) - 4 * c * Math.pow(d, 2), 2) - 4 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2)) * (Math.pow(a, 4) + 2 * Math.pow(a, 2) * Math.pow(b, 2) - 4 * Math.pow(a, 2) * b * d - 2 * Math.pow(a, 2) * Math.pow(c, 2) + 2 * Math.pow(a, 2) * Math.pow(d, 2) + Math.pow(b, 4) - 4 * Math.pow(b, 3) * d + 2 * Math.pow(b, 2) * Math.pow(c, 2) + 6 * Math.pow(b, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * Math.pow(r, 2) - 4 * b * Math.pow(c, 2) * d - 4 * b * Math.pow(d, 3) + 8 * b * d * Math.pow(r, 2) + Math.pow(c, 4) + 2 * Math.pow(c, 2) * Math.pow(d, 2) + Math.pow(d, 4) - 4 * Math.pow(d, 2) * Math.pow(r, 2)))));
+        console.log("Discriminant 2: " + discriminant);
+        // Calculate the denominator
+        var denominator = 2 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2));
+
+        // Calculate the result
+        var numerator = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c + discriminant + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
+        var result = numerator / denominator;
+
+        return result;
+
+    }
+
+    var point = findIntersect([55, 0], [-15, 40], 85);
+    console.log(point[0]);
+    console.log(point[1]);
+
+
+
+
+
+
+  </script>
+</body>
+</html>
