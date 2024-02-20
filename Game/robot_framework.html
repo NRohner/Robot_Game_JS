@@ -17,11 +17,11 @@
 
     /////////////////////////////////////////////////////////////////////////////////////////////
     //      Roadmap and Plan
-    //  1. Create a secondary arm class
-    //  2. Render secondary arms using the drawList
+    //  1. Create a secondary arm class - DONE
+    //  2. Render secondary arms using the drawList - DONE
     //  3. Create a TCP class
     //  4. Renter the TCP using the drawList
-    //  5. 
+    //  5. Only render and calculate at 60fps. We are calculating way more than necessary right now
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     //Creating a primary arm class
@@ -113,7 +113,7 @@
     // Physics constants and variables
     const g = 9.81;
     const pi = 3.14159;
-    const deltaT = 0.0001; // This is our time step in seconds
+    const deltaT = 0.001; // This is our time step in seconds
     
     const r_length = 50;    // the length in cm to the cog of the bar. Basically the magnitude of r at all times
     var thetha = 0; // radians
@@ -195,18 +195,20 @@
                 ctx.lineTo(pos2_c[0], pos2_c[1]);
                 ctx.strokeStyle = 'black';
                 ctx.stroke();
-
+                
                 // Drawing the circles at the end of the line
                 ctx.beginPath();
                 ctx.arc(pos2_c[0], pos2_c[1], secondaryArmLen, 0, 2 * Math.PI, false);
-                /* We dont want fill but if you did:
+                 /*We dont want fill but if you did:
                 ctx.fillStyle = 'red';
                 ctx.fill();
                 */
+                
                ctx.lineWidth = 3;
                ctx.strokeStyle = 'red';
                ctx.stroke();
                ctx.closePath();
+               
 
             } else {    // Else draw the secondary arms normally
                 // Converting robot coordinate points to canvas coordinate points
