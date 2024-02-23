@@ -17,11 +17,9 @@
 
     /////////////////////////////////////////////////////////////////////////////////////////////
     //      Roadmap and Plan
-    //  1. Create a secondary arm class - DONE
-    //  2. Render secondary arms using the drawList - DONE
-    //  3. Create a TCP class
-    //  4. Renter the TCP using the drawList
-    //  5. Only render and calculate at 60fps. We are calculating way more than necessary right now
+    //  1. create a payload class
+    //  2. create a overarching robot class. This class should contain the draw list for all arms in the robot
+    //  3. create a super overarching class for the game. This class should have the animate function and should animate all aspects of the game.
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     //Creating a primary arm class
@@ -113,7 +111,7 @@
     // Physics constants and variables
     const g = 9.81;
     const pi = 3.14159;
-    const deltaT = 0.001; // This is our time step in seconds
+    const deltaT = 0.003; // This is our time step in seconds
     
     const r_length = 50;    // the length in cm to the cog of the bar. Basically the magnitude of r at all times
     var thetha = 0; // radians
@@ -195,7 +193,6 @@
     function drawRobot() {
         // Clear the canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
         // Looping through all items in drawList
         for (var element of drawList) {
             if (element.type == "primary") {  // If its a primary arm, draw the arms and the circles
@@ -207,20 +204,8 @@
                 ctx.moveTo(pos1_c[0], pos1_c[1]);
                 ctx.lineTo(pos2_c[0], pos2_c[1]);
                 ctx.strokeStyle = 'black';
+                ctx.lineWidth = 3;
                 ctx.stroke();
-                
-                // Drawing the circles at the end of the line
-                ctx.beginPath();
-                ctx.arc(pos2_c[0], pos2_c[1], secondaryArmLen, 0, 2 * Math.PI, false);
-                 /*We dont want fill but if you did:
-                ctx.fillStyle = 'red';
-                ctx.fill();
-                */
-                
-               ctx.lineWidth = 3;
-               ctx.strokeStyle = 'red';
-               ctx.stroke();
-               ctx.closePath();
                
 
             } else {    // Else draw the secondary arms normally
@@ -232,14 +217,10 @@
                 ctx.moveTo(pos1_c[0], pos1_c[1]);
                 ctx.lineTo(pos2_c[0], pos2_c[1]);
                 ctx.strokeStyle = 'blue';
+                ctx.lineWidth = 3;
                 ctx.stroke();
             }
         }
-
-        // For debuging only - drawing intersection circles at the ends of the primary arms
-
-
-
 
         // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
         updatePosition();
@@ -370,8 +351,32 @@
     });
 
 
-    // Start the animation
-    drawRobot();
+    window.onload = function(){     //JS will wait for the entier page to load including all images and external content before trigging the window.onload
+        // 1. Get the device pixel ratio
+        ratio = window.devicePixelRatio || 1;
+
+        // 2. Set the initial canvas.width and canvas.height
+        canvas.width = 500;
+        canvas.height = 400;
+
+        // 3. Make sure the canvas element stays the same size
+        canvas.style.width = canvas.width + 'px';
+        canvas.style.height = canvas.height + 'px';
+
+        // 4. Scale the canvas dims by the pixel ratio
+        canvas.width *= ratio;
+        canvas.height *= ratio;
+
+        // 5. scale the context by the pixel ratio
+        ctx.scale(ratio, ratio);
+
+        drawRobot();
+    }
+
+    // No resize listener for this app because the canvas size is set to a specifix x, y value rather than just the window size
+
+
+
   </script>
 </body>
 </html>
