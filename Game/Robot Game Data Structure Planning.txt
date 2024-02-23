@@ -1,0 +1,104 @@
+Robot Game Data Structure Planning
+
+Global constants
+game - the variable we will set equal to our game object.
+arm masses
+arm moments of inertia
+
+Adustable Input Variables:      (May want to make some of these states or game parameters for difficulty ect.)
+primaryArmLength
+secondaryArmLength
+motorOffset - distance between the center of the robot coordinate system and the motor. The coordinates of the two motors will be (motorOffset, 0) and (-motorOffset, 0)
+motorTorque
+min and max theta for the arms - just the max and min allowable rotation angle
+
+
+
+Main Class: Game
+    Constructor Needs:
+        Inputs:
+        - Robot Object. This is the sub class that will contain all of the arms
+
+        Initializations:
+        - Robot Class - Create the robot that will be used in the game.
+        - multiple state variables to handle state management. Or some smarter way to do this without
+        multiple variables but whatever.
+        - drawList - a list object of the game objects that will be drawn. Each sub class like Robot and Payload
+        will need to have a class function .draw() which handles the drawing of those objects to the frame. We then
+        add the items to the draw list in the order we want them drawn.
+
+    Methods:
+
+        - Run - this runs the game. It will call animate and anything else needed to get the game from start to end.
+
+        - Animate. Does what it says. This will handle the animation of the robot, the payloads to grab,
+        the drop off points for those payloads
+                - The actual mechanics of the animate will be as such:
+                    - Loop through the drawList and call .draw on all of its items in order.
+                    - At the end you will have the request animation frame stuff
+
+        - updatePosition
+            - Loops through the drawList and calls .updatePos on all items in it.
+            - All sub classes that occur in drawList must have a .updatePos function that updates their position
+            according to the time incriment.
+
+
+
+        - Will do the state management for the game.
+            - Which game mode we are in
+            - Player score
+            - Player time
+            - Which title slides or text to show next (if i add this stuff)
+
+
+Subclass: Robot
+    Constructor Needs:
+        Inputs:
+        
+        Initializations:
+        2x PrimaryArm Objects
+        2x SecondaryArm Objects
+        Robot Body object - This is just a simple drawing representation of a robot. Try to be creative and make it cute
+                            Would be very nice if you could draw it all with canvas commands. But could use a photo if needed.
+
+
+    Methods:
+    - draw - draws all the arms. Does not call the request next animation frame thing. Only the top level animate function
+    - updatePos - updates the position of all the arms. I think we will need to incorporate our gravity and friction stuff into this method
+
+
+
+Subclass: PrimaryArm
+    Constructor Needs:
+        Inputs:
+        - motor coordinates
+
+
+        Initializations:
+        ** Note ** You dont need right or left or type variable. Just name the arms in a way that tells you what they are 
+        Since your only drawing 4 arms in the robot draw function just draw them all individually using the name. No need for logic based on a type variable.
+        - Theta
+        - Position 2 - vector
+        - Center of Gravity vector
+        
+
+
+    Methods:
+
+
+Subclass: SecondaryArm
+    Constructor Needs:
+        Inputs:
+
+        Initializations:
+
+    Methods:
+
+
+Subclass: Payload
+    Constructor Needs:
+        Inputs:
+
+        Initializations:
+
+    Methods:

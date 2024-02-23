@@ -1,382 +1,492 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>D2 Robot Framework</title>
-  <style>
-    canvas {
-      border: 1px solid #000;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="myCanvas" width="500" height="500"></canvas>
-
-  <script>
-
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    //      Roadmap and Plan
-    //  1. create a payload class
-    //  2. create a overarching robot class. This class should contain the draw list for all arms in the robot
-    //  3. create a super overarching class for the game. This class should have the animate function and should animate all aspects of the game.
-    ////////////////////////////////////////////////////////////////////////////////////////////
-
-    //Creating a primary arm class
-    class PrimaryArm {
-        constructor(type, R_or_L, length, theta, pos1, w, m, T, I) {
-            this.type = type;
-            this.R_or_L = R_or_L;
-            this.length = length;
-            this.theta = theta;
-            this.pos1 = pos1;
-            this.w = w;
-            this.m = m;
-            this.T = T;
-            this.I = I;
-            //pos2 is the end point of the primary arm
-            this.pos2 = [((primaryArmLen * Math.cos(this.theta)) + pos1[0]), ((primaryArmLen * Math.sin(this.theta)) + pos1[1])];
-            this.cogVector = [(Math.cos(this.theta) * (this.length / 2)), (Math.sin(this.theta) * (this.length / 2))]   // Vector to the COG of the primary arm
-        }
-    }
-    
-    //Creating a secondary arm class
-    class SecondaryArm {
-        constructor(type, parent, length, m, I) {
-            this.type = type;
-            this.parent = parent;   //The primary arm this secondary arm is attached to
-            this.length = length;
-            
-            this.pos1 = parent.pos2;
-            this.m = m;
-            this.I = I;
-
-            // Calculated variables - this is where the big math comes in lol
-            this.pos2 = findArcIntersect(rightPrimaryArm, leftPrimaryArm)
-        }
-
-
-
-    }
-
-    // Creating our draw list
-    var drawList = [];
-
-    // Setting our robot constants and initial conditions
-    const primaryArmLen = 40;  //primary arm length in cm
-    const armGap = 15;          // distance between robot origin and the right motor in cm
-    const secondaryArmLen = 85; //secondary arm length in cm
-    const motorTorque = 800;    // Motor torque in who knows what units lol. Im mixing cm and m to much here. Just puting in numbers that make things play nice at this point.
-    const min_theta_r = -0.523599;  //15 degrees above horizontal
-    const max_theta_r = 1.661553; // Value in radians from the codian calculator so it should be a realistic value.
-    const min_theta_l = 1.480039;   // Value in radians from the codian calculator so it should be a realistic value.
-    const max_theta_l = Math.PI + 0.523599; // From the codian calculator
-    const tcp_diameter = 25;        // TCP diameter in cm
-
-    const I_Primary = 1;                    // Moment of inertia for primary arm. Just a dummy value for now.
-    const mPrimaryArm = 1;            // mass of the primary arm in kg. We modulate this when payloads are picked up to simulate added weight.
-
-    const I_Secondary = 1;
-    const mSecondaryArm = 1;
-
-    // Motor coordinates of right primary arm in ROBOT COORDINATE SYSTEM
-    var r_arm_1_robot = [armGap, 0];
-    // Motor coordinates of left primary arm in ROBOT COORDINATE SYSTEM
-    var l_arm_1_robot = [-1 * armGap, 0];
-
-    // Initial angle for the right and left arms.
-    var theta_r = 0;    // radians - initial angle of right arm
-    var theta_l = Math.PI;    // radians - initial angle of left arm
-
-    // Creating our primary arm objects
-    var rightPrimaryArm = new PrimaryArm("primary" ,"r", primaryArmLen, theta_r, r_arm_1_robot, 0, mPrimaryArm, 0, I_Primary);
-    var leftPrimaryArm = new PrimaryArm("primary" ,"l", primaryArmLen, theta_l, l_arm_1_robot, 0, mPrimaryArm, 0, I_Primary);
-
-    // Creating our secondary arm objects
-    var rightSecondaryArm = new SecondaryArm("secondary", rightPrimaryArm, secondaryArmLen, mSecondaryArm, I_Secondary);
-    var leftSecondaryArm = new SecondaryArm("secondary", leftPrimaryArm, secondaryArmLen, mSecondaryArm, I_Secondary);
-    
-
-    // Adding our upper arm objects to the draw list
-    drawList.push(rightPrimaryArm);
-    drawList.push(leftPrimaryArm);
-    drawList.push(rightSecondaryArm);
-    drawList.push(leftSecondaryArm);
-
-
-    // Get the canvas element
-    var canvas = document.getElementById("myCanvas");
-    var ctx = canvas.getContext("2d");
-
-    // Physics constants and variables
-    const g = 9.81;
-    const pi = 3.14159;
-    const deltaT = 0.003; // This is our time step in seconds
-    
-    const r_length = 50;    // the length in cm to the cog of the bar. Basically the magnitude of r at all times
-    var thetha = 0; // radians
-    var w = 0;      // radians per second
-    var t = 0;      // time in seconds
-    var F = [0, g];     //force vector for the force of gravity acting on the bar
-
-    // Setting up key variable
-    let isUpKeyPressed = false;
-    let isDownKeyPressed = false;
-    let isSpaceKeyPressed = false;
-    let isRightKeyPressed = false;
-    let isLeftKeyPressed = false;
-
-
-
-    function crossProduct_2D(vector1, vector2) {
-        if (vector1.length !== 2 || vector2.length !== 2) {
-        throw new Error("Cross product is only defined for 2D vectors");
-        }
-
-        return vector1[0] * vector2[1] - vector1[1] * vector2[0];
-    }
-
-
-    function convertRobotCoord_2_CanvasCoord (point) {
-        // takes a point in robot coordinates and converts it to canvas coordinates
-        // The origin of robot coordinates will map to (250, 100) in canvas coordinates
-        let canvasCoords = [(point[0] + 250), (point[1] + 100)]
-        return canvasCoords
-    } 
-
-    function findArcIntersect (primeArmR, primeArmL) {     // finds the tcp location given the two primary arms and the secondary arm lenght
-        let a = primeArmR.pos2[0];
-        let b = primeArmR.pos2[1];
-        let c = primeArmL.pos2[0];
-        let d = primeArmL.pos2[1];
-        let r = secondaryArmLen;
-        let x;
-        
-        let under_the_root = (
-            Math.pow(-4 * Math.pow(a, 3) + 4 * Math.pow(a, 2) * c - 4 * a * Math.pow(b, 2) + 8 * a * b * d + 4 * a * Math.pow(c, 2) - 4 * a * Math.pow(d, 2) - 4 * Math.pow(b, 2) * c + 8 * b * c * d - 4 * Math.pow(c, 3) - 4 * c * Math.pow(d, 2), 2) - 
-            4 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2)) * 
-            (Math.pow(a, 4) + 2 * Math.pow(a, 2) * Math.pow(b, 2) - 4 * Math.pow(a, 2) * b * d - 2 * Math.pow(a, 2) * Math.pow(c, 2) + 2 * Math.pow(a, 2) * Math.pow(d, 2) + Math.pow(b, 4) - 4 * Math.pow(b, 3) * d + 2 * Math.pow(b, 2) * Math.pow(c, 2) + 
-            6 * Math.pow(b, 2) * Math.pow(d, 2) - 4 * Math.pow(b, 2) * Math.pow(r, 2) - 4 * b * Math.pow(c, 2) * d - 4 * b * Math.pow(d, 3) + 8 * b * d * Math.pow(r, 2) + Math.pow(c, 4) + 2 * Math.pow(c, 2) * Math.pow(d, 2) + Math.pow(d, 4) - 4 * Math.pow(d, 2) * Math.pow(r, 2)));
-        if (under_the_root < 0) {
-            under_the_root = 0;
-        }
-        
-        let numerator = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c + Math.sqrt(under_the_root) + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
-        let numerator2 = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c - Math.sqrt(under_the_root) + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
-
-        let denominator = 2 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2));
-
-        let x1 = numerator / denominator;   // Positive X
-        let x2 = numerator2 / denominator;  // Negative X
-
-        if ((Math.PI - primeArmL.theta) > primeArmR.theta){
-            x = x1;
-        } else{
-            x = x2;
-        }
-        
-
-        var y = b + Math.sqrt(-Math.pow(a, 2) + 2 * a * x + Math.pow(r, 2) - Math.pow(x, 2));
-        let sArmVector_R = [(x - primeArmR.pos2[0]), (y - primeArmR.pos2[1])];
-        let sArmVector_L = [(x - primeArmL.pos2[0]), (y - primeArmL.pos2[1])];
-
-        //Debugging Stuff
-        //let secondaryArm_R_Radius_Calculated = Math.sqrt((sArmVector_R[0] ** 2) + (sArmVector_R[1] ** 2));
-        //let secondaryArm_L_Radius_Calculated = Math.sqrt((sArmVector_L[0] ** 2) + (sArmVector_L[1] ** 2));
-        var debug = [primeArmL.theta, primeArmR.theta];
-        console.log(debug);
-
-       return [x, y]
-    }
-
-
-    function drawRobot() {
-        // Clear the canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Looping through all items in drawList
-        for (var element of drawList) {
-            if (element.type == "primary") {  // If its a primary arm, draw the arms and the circles
-                // Converting robot coordinate points to canvas coordinate points
-                let pos1_c = convertRobotCoord_2_CanvasCoord(element.pos1);
-                let pos2_c = convertRobotCoord_2_CanvasCoord(element.pos2);
-                // Drawing a line between the stard and end points of each item in the draw list
-                ctx.beginPath();
-                ctx.moveTo(pos1_c[0], pos1_c[1]);
-                ctx.lineTo(pos2_c[0], pos2_c[1]);
-                ctx.strokeStyle = 'black';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-               
-
-            } else {    // Else draw the secondary arms normally
-                // Converting robot coordinate points to canvas coordinate points
-                let pos1_c = convertRobotCoord_2_CanvasCoord(element.pos1);
-                let pos2_c = convertRobotCoord_2_CanvasCoord(element.pos2);
-                // Drawing a line between the stard and end points of each item in the draw list
-                ctx.beginPath();
-                ctx.moveTo(pos1_c[0], pos1_c[1]);
-                ctx.lineTo(pos2_c[0], pos2_c[1]);
-                ctx.strokeStyle = 'blue';
-                ctx.lineWidth = 3;
-                ctx.stroke();
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>D2 Robot Framework</title>
+        <style>
+            canvas {
+                border: 1px solid #000;
             }
-        }
+        </style>
+    </head>
+    <body>
+        <canvas id="myCanvas" width="500" height="500"></canvas>
 
-        // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
-        updatePosition();
-      
+        <script>
+            /////////////////////////////////////////////////////////////////////////////////////////////
+            //      Roadmap and Plan
+            //  1. create a payload class
+            //  2. create a overarching robot class. This class should contain the draw list for all arms in the robot
+            //  3. create a super overarching class for the game. This class should have the animate function and should animate all aspects of the game.
+            ////////////////////////////////////////////////////////////////////////////////////////////
 
-        // Request the next animation frame
-        //Adding a wait time to make it easier for debugging 
-        requestAnimationFrame(drawRobot);
-    }
-
-    function updatePrimaryArmPosition(arm) {
-        arm.T = crossProduct_2D(arm.cogVector, F);      // Torque on the arm due to the force of gravity
-        // If statement to handle the right and left motor turning on
-        if (arm.R_or_L == "r") {        //If its the right arm
-            if (isRightKeyPressed) {    //And the right motor is on (right arrow key pressed)
-                //console.log("Right key is pressed")
-                console.log(arm.T);
-                arm.T = arm.T - motorTorque;      //Adding a motor torque value of 8
-                console.log(arm.T);
-            } else {                    //Else, it is the right arm but the right motor is off (normal arm behavior)
-
-            }
-        } else if (arm.R_or_L == 'l') {                        //If its the left arm
-            if (isLeftKeyPressed) {     //And the left motor is on (left arrow key pressed)
-                arm.T = arm.T + motorTorque;      //Subtracting a motor torque of 8 (not sure if the signes here are right yet)
-            } else {                    //Else, it is the left arm but the left motor is off (normal arm behavior)
-
-            }
-        }
-
-        let w_0 = arm.w;
-        let friction = 0;
-        // Friction calculation
-        if (arm.w > 0) {
-            friction = -1 * (w_0 ** 2) * 0.5;
-        }
-        else {
-            friction = (w_0 ** 2) * 0.5;
-        }
-
-        arm.T = arm.T + friction;
-        let alpha = arm.T / arm.I;
-    
-        arm.w = w_0 + (alpha * deltaT);
-        let deltaTheta = (w_0 * deltaT) + (((0.5 * alpha)) * (deltaT ** 2));
-        arm.theta = arm.theta + deltaTheta;
-
-
-        // If statement to ensrue the position of the arm is within the acceptable min and max theta
-        if (arm.R_or_L == "r") {
-            if (arm.theta > max_theta_r) {  //If arm is a right arm and arm.theta is greater than the max allowable theta for a right arm, then just set arm.theta = to the max allowable theta
-                arm.theta = max_theta_r;
-                arm.w = 0;
-            } else if (arm.theta < min_theta_r) {   //If arm is a right arm and arm.theta is less than the min allowable theta for a right arm, then just set arm.theta = to the min allowable theta
-                arm.theta = min_theta_r;
-                arm.w = 0;
-            } else {        //Else, if arm.theta is within the allowable range, behave normally (do nothing)
-
-            }
-        } else {
-            if (arm.theta > max_theta_l) {  //If arm is a right arm and arm.theta is greater than the max allowable theta for a right arm, then just set arm.theta = to the max allowable theta
-                arm.theta = max_theta_l;
-                arm.w = 0;
-            } else if (arm.theta < min_theta_l) {   //If arm is a right arm and arm.theta is less than the min allowable theta for a right arm, then just set arm.theta = to the min allowable theta
-                arm.theta = min_theta_l;
-                arm.w = 0;
-            } else {        //Else, if arm.theta is within the allowable range, behave normally (do nothing)
-
-            }
-        }
-
-        arm.pos2[0] = (Math.cos(arm.theta) * arm.length) + arm.pos1[0];
-        arm.pos2[1] = (Math.sin(arm.theta) * arm.length) + arm.pos1[1];
-        arm.cogVector[0] = (Math.cos(arm.theta) * (arm.length / 2));
-        arm.cogVector[1] = (Math.sin(arm.theta) * (arm.length / 2));
-
-    }
-    
-    function updateSecondaryArmPosition(arm) {
-        // Fill this out
-        arm.pos2 = findArcIntersect(rightPrimaryArm, leftPrimaryArm);
-
-    }
-
-    function updatePosition() {
-        // this updatePosition() function will just call a bunch of other functions that actually handle the moving of each of the points for the various arms
-        for (element in drawList) {
-            if (drawList[element].type == "primary") {
-                updatePrimaryArmPosition(drawList[element]);
-            } else if (drawList[element].type == "secondary") {
-                updateSecondaryArmPosition(drawList[element]);      // Need to create a function for this 
+            //Creating a primary arm class
+            class PrimaryArm {
+                constructor(type, R_or_L, length, theta, pos1, w, m, T, I) {
+                    this.type = type;
+                    this.R_or_L = R_or_L;
+                    this.length = length;
+                    this.theta = theta;
+                    this.pos1 = pos1;
+                    this.w = w;
+                    this.m = m;
+                    this.T = T;
+                    this.I = I;
+                    //pos2 is the end point of the primary arm
+                    this.pos2 = [
+                        primaryArmLen * Math.cos(this.theta) + pos1[0],
+                        primaryArmLen * Math.sin(this.theta) + pos1[1],
+                    ];
+                    this.cogVector = [
+                        Math.cos(this.theta) * (this.length / 2),
+                        Math.sin(this.theta) * (this.length / 2),
+                    ]; // Vector to the COG of the primary arm
+                }
             }
 
-        }
+            //Creating a secondary arm class
+            class SecondaryArm {
+                constructor(type, parent, length, m, I) {
+                    this.type = type;
+                    this.parent = parent; //The primary arm this secondary arm is attached to
+                    this.length = length;
 
+                    this.pos1 = parent.pos2;
+                    this.m = m;
+                    this.I = I;
 
-    }
-    
+                    // Calculated variables - this is where the big math comes in lol
+                    this.pos2 = findArcIntersect(
+                        rightPrimaryArm,
+                        leftPrimaryArm,
+                    );
+                }
+            }
 
-    // Event listener for right arrow key
-    window.addEventListener('keydown', function(event) {
-        if (event.key === 'ArrowRight') {
-            isRightKeyPressed = true;
-            
-        }
-    });
+            // Creating our draw list
+            var drawList = [];
 
-    // Event listener for keyup event
-    window.addEventListener('keyup', function(event) {
-        if (event.key === 'ArrowRight') {
-            isRightKeyPressed = false;
-        }
-    });
+            // Setting our robot constants and initial conditions
+            const primaryArmLen = 40; //primary arm length in cm
+            const armGap = 15; // distance between robot origin and the right motor in cm
+            const secondaryArmLen = 85; //secondary arm length in cm
+            const motorTorque = 800; // Motor torque in who knows what units lol. Im mixing cm and m to much here. Just puting in numbers that make things play nice at this point.
+            const min_theta_r = -0.523599; //15 degrees above horizontal
+            const max_theta_r = 1.661553; // Value in radians from the codian calculator so it should be a realistic value.
+            const min_theta_l = 1.480039; // Value in radians from the codian calculator so it should be a realistic value.
+            const max_theta_l = Math.PI + 0.523599; // From the codian calculator
+            const tcp_diameter = 25; // TCP diameter in cm
 
-    // Event listener for left arrow key
-    window.addEventListener('keydown', function(event) {
-        if (event.key === 'ArrowLeft') {
-            isLeftKeyPressed = true;
-            
-        }
-    });
+            const I_Primary = 1; // Moment of inertia for primary arm. Just a dummy value for now.
+            const mPrimaryArm = 1; // mass of the primary arm in kg. We modulate this when payloads are picked up to simulate added weight.
 
-    // Event listener for keyup event
-    window.addEventListener('keyup', function(event) {
-        if (event.key === 'ArrowLeft') {
-            isLeftKeyPressed = false;
-        }
-    });
+            const I_Secondary = 1;
+            const mSecondaryArm = 1;
 
+            // Motor coordinates of right primary arm in ROBOT COORDINATE SYSTEM
+            var r_arm_1_robot = [armGap, 0];
+            // Motor coordinates of left primary arm in ROBOT COORDINATE SYSTEM
+            var l_arm_1_robot = [-1 * armGap, 0];
 
-    window.onload = function(){     //JS will wait for the entier page to load including all images and external content before trigging the window.onload
-        // 1. Get the device pixel ratio
-        ratio = window.devicePixelRatio || 1;
+            // Initial angle for the right and left arms.
+            var theta_r = 0; // radians - initial angle of right arm
+            var theta_l = Math.PI; // radians - initial angle of left arm
 
-        // 2. Set the initial canvas.width and canvas.height
-        canvas.width = 500;
-        canvas.height = 400;
+            // Creating our primary arm objects
+            var rightPrimaryArm = new PrimaryArm(
+                "primary",
+                "r",
+                primaryArmLen,
+                theta_r,
+                r_arm_1_robot,
+                0,
+                mPrimaryArm,
+                0,
+                I_Primary,
+            );
+            var leftPrimaryArm = new PrimaryArm(
+                "primary",
+                "l",
+                primaryArmLen,
+                theta_l,
+                l_arm_1_robot,
+                0,
+                mPrimaryArm,
+                0,
+                I_Primary,
+            );
 
-        // 3. Make sure the canvas element stays the same size
-        canvas.style.width = canvas.width + 'px';
-        canvas.style.height = canvas.height + 'px';
+            // Creating our secondary arm objects
+            var rightSecondaryArm = new SecondaryArm(
+                "secondary",
+                rightPrimaryArm,
+                secondaryArmLen,
+                mSecondaryArm,
+                I_Secondary,
+            );
+            var leftSecondaryArm = new SecondaryArm(
+                "secondary",
+                leftPrimaryArm,
+                secondaryArmLen,
+                mSecondaryArm,
+                I_Secondary,
+            );
 
-        // 4. Scale the canvas dims by the pixel ratio
-        canvas.width *= ratio;
-        canvas.height *= ratio;
+            // Adding our upper arm objects to the draw list
+            drawList.push(rightPrimaryArm);
+            drawList.push(leftPrimaryArm);
+            drawList.push(rightSecondaryArm);
+            drawList.push(leftSecondaryArm);
 
-        // 5. scale the context by the pixel ratio
-        ctx.scale(ratio, ratio);
+            // Get the canvas element
+            var canvas = document.getElementById("myCanvas");
+            var ctx = canvas.getContext("2d");
 
-        drawRobot();
-    }
+            // Physics constants and variables
+            const g = 9.81;
+            const pi = 3.14159;
+            const deltaT = 0.003; // This is our time step in seconds
 
-    // No resize listener for this app because the canvas size is set to a specifix x, y value rather than just the window size
+            const r_length = 50; // the length in cm to the cog of the bar. Basically the magnitude of r at all times
+            var thetha = 0; // radians
+            var w = 0; // radians per second
+            var t = 0; // time in seconds
+            var F = [0, g]; //force vector for the force of gravity acting on the bar
 
+            // Setting up key variable
+            let isUpKeyPressed = false;
+            let isDownKeyPressed = false;
+            let isSpaceKeyPressed = false;
+            let isRightKeyPressed = false;
+            let isLeftKeyPressed = false;
 
+            function crossProduct_2D(vector1, vector2) {
+                if (vector1.length !== 2 || vector2.length !== 2) {
+                    throw new Error(
+                        "Cross product is only defined for 2D vectors",
+                    );
+                }
 
-  </script>
-</body>
+                return vector1[0] * vector2[1] - vector1[1] * vector2[0];
+            }
+
+            function convertRobotCoord_2_CanvasCoord(point) {
+                // takes a point in robot coordinates and converts it to canvas coordinates
+                // The origin of robot coordinates will map to (250, 100) in canvas coordinates
+                let canvasCoords = [point[0] + 250, point[1] + 100];
+                return canvasCoords;
+            }
+
+            function findArcIntersect(primeArmR, primeArmL) {
+                // finds the tcp location given the two primary arms and the secondary arm lenght
+                let a = primeArmR.pos2[0];
+                let b = primeArmR.pos2[1];
+                let c = primeArmL.pos2[0];
+                let d = primeArmL.pos2[1];
+                let r = secondaryArmLen;
+                let x;
+
+                let under_the_root =
+                    Math.pow(
+                        -4 * Math.pow(a, 3) +
+                            4 * Math.pow(a, 2) * c -
+                            4 * a * Math.pow(b, 2) +
+                            8 * a * b * d +
+                            4 * a * Math.pow(c, 2) -
+                            4 * a * Math.pow(d, 2) -
+                            4 * Math.pow(b, 2) * c +
+                            8 * b * c * d -
+                            4 * Math.pow(c, 3) -
+                            4 * c * Math.pow(d, 2),
+                        2,
+                    ) -
+                    4 *
+                        (4 * Math.pow(a, 2) -
+                            8 * a * c +
+                            4 * Math.pow(b, 2) -
+                            8 * b * d +
+                            4 * Math.pow(c, 2) +
+                            4 * Math.pow(d, 2)) *
+                        (Math.pow(a, 4) +
+                            2 * Math.pow(a, 2) * Math.pow(b, 2) -
+                            4 * Math.pow(a, 2) * b * d -
+                            2 * Math.pow(a, 2) * Math.pow(c, 2) +
+                            2 * Math.pow(a, 2) * Math.pow(d, 2) +
+                            Math.pow(b, 4) -
+                            4 * Math.pow(b, 3) * d +
+                            2 * Math.pow(b, 2) * Math.pow(c, 2) +
+                            6 * Math.pow(b, 2) * Math.pow(d, 2) -
+                            4 * Math.pow(b, 2) * Math.pow(r, 2) -
+                            4 * b * Math.pow(c, 2) * d -
+                            4 * b * Math.pow(d, 3) +
+                            8 * b * d * Math.pow(r, 2) +
+                            Math.pow(c, 4) +
+                            2 * Math.pow(c, 2) * Math.pow(d, 2) +
+                            Math.pow(d, 4) -
+                            4 * Math.pow(d, 2) * Math.pow(r, 2));
+                if (under_the_root < 0) {
+                    under_the_root = 0;
+                }
+
+                let numerator =
+                    4 * Math.pow(a, 3) -
+                    4 * Math.pow(a, 2) * c +
+                    Math.sqrt(under_the_root) +
+                    4 * a * Math.pow(b, 2) -
+                    8 * a * b * d -
+                    4 * a * Math.pow(c, 2) +
+                    4 * a * Math.pow(d, 2) +
+                    4 * Math.pow(b, 2) * c -
+                    8 * b * c * d +
+                    4 * Math.pow(c, 3) +
+                    4 * c * Math.pow(d, 2);
+                let numerator2 =
+                    4 * Math.pow(a, 3) -
+                    4 * Math.pow(a, 2) * c -
+                    Math.sqrt(under_the_root) +
+                    4 * a * Math.pow(b, 2) -
+                    8 * a * b * d -
+                    4 * a * Math.pow(c, 2) +
+                    4 * a * Math.pow(d, 2) +
+                    4 * Math.pow(b, 2) * c -
+                    8 * b * c * d +
+                    4 * Math.pow(c, 3) +
+                    4 * c * Math.pow(d, 2);
+
+                let denominator =
+                    2 *
+                    (4 * Math.pow(a, 2) -
+                        8 * a * c +
+                        4 * Math.pow(b, 2) -
+                        8 * b * d +
+                        4 * Math.pow(c, 2) +
+                        4 * Math.pow(d, 2));
+
+                let x1 = numerator / denominator; // Positive X
+                let x2 = numerator2 / denominator; // Negative X
+
+                if (Math.PI - primeArmL.theta > primeArmR.theta) {
+                    x = x1;
+                } else {
+                    x = x2;
+                }
+
+                var y =
+                    b +
+                    Math.sqrt(
+                        -Math.pow(a, 2) +
+                            2 * a * x +
+                            Math.pow(r, 2) -
+                            Math.pow(x, 2),
+                    );
+                let sArmVector_R = [
+                    x - primeArmR.pos2[0],
+                    y - primeArmR.pos2[1],
+                ];
+                let sArmVector_L = [
+                    x - primeArmL.pos2[0],
+                    y - primeArmL.pos2[1],
+                ];
+
+                //Debugging Stuff
+                //let secondaryArm_R_Radius_Calculated = Math.sqrt((sArmVector_R[0] ** 2) + (sArmVector_R[1] ** 2));
+                //let secondaryArm_L_Radius_Calculated = Math.sqrt((sArmVector_L[0] ** 2) + (sArmVector_L[1] ** 2));
+                //var debug = [primeArmL.theta, primeArmR.theta];
+                //console.log(debug);
+
+                return [x, y];
+            }
+
+            function drawRobot() {
+                // Clear the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Looping through all items in drawList
+                for (var element of drawList) {
+                    if (element.type == "primary") {
+                        // If its a primary arm, draw the arms and the circles
+                        // Converting robot coordinate points to canvas coordinate points
+                        let pos1_c = convertRobotCoord_2_CanvasCoord(
+                            element.pos1,
+                        );
+                        let pos2_c = convertRobotCoord_2_CanvasCoord(
+                            element.pos2,
+                        );
+                        // Drawing a line between the stard and end points of each item in the draw list
+                        ctx.beginPath();
+                        ctx.moveTo(pos1_c[0], pos1_c[1]);
+                        ctx.lineTo(pos2_c[0], pos2_c[1]);
+                        ctx.strokeStyle = "black";
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    } else {
+                        // Else draw the secondary arms normally
+                        // Converting robot coordinate points to canvas coordinate points
+                        let pos1_c = convertRobotCoord_2_CanvasCoord(
+                            element.pos1,
+                        );
+                        let pos2_c = convertRobotCoord_2_CanvasCoord(
+                            element.pos2,
+                        );
+                        // Drawing a line between the stard and end points of each item in the draw list
+                        ctx.beginPath();
+                        ctx.moveTo(pos1_c[0], pos1_c[1]);
+                        ctx.lineTo(pos2_c[0], pos2_c[1]);
+                        ctx.strokeStyle = "blue";
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    }
+                }
+
+                // CAll the update function to Update the position of point2 for the next frame if the system is unpaused
+                updatePosition();
+
+                // Request the next animation frame
+                //Adding a wait time to make it easier for debugging
+                requestAnimationFrame(drawRobot);
+            }
+
+            function updatePrimaryArmPosition(arm) {
+                arm.T = crossProduct_2D(arm.cogVector, F); // Torque on the arm due to the force of gravity
+                // If statement to handle the right and left motor turning on
+                if (arm.R_or_L == "r") {
+                    //If its the right arm
+                    if (isRightKeyPressed) {
+                        //And the right motor is on (right arrow key pressed)
+                        //console.log("Right key is pressed")
+                        console.log(arm.T);
+                        arm.T = arm.T - motorTorque; //Adding a motor torque value of 8
+                        console.log(arm.T);
+                    } else {
+                        //Else, it is the right arm but the right motor is off (normal arm behavior)
+                    }
+                } else if (arm.R_or_L == "l") {
+                    //If its the left arm
+                    if (isLeftKeyPressed) {
+                        //And the left motor is on (left arrow key pressed)
+                        arm.T = arm.T + motorTorque; //Subtracting a motor torque of 8 (not sure if the signes here are right yet)
+                    } else {
+                        //Else, it is the left arm but the left motor is off (normal arm behavior)
+                    }
+                }
+
+                let w_0 = arm.w;
+                let friction = 0;
+                // Friction calculation
+                if (arm.w > 0) {
+                    friction = -1 * w_0 ** 2 * 0.5;
+                } else {
+                    friction = w_0 ** 2 * 0.5;
+                }
+
+                arm.T = arm.T + friction;
+                let alpha = arm.T / arm.I;
+
+                arm.w = w_0 + alpha * deltaT;
+                let deltaTheta = w_0 * deltaT + 0.5 * alpha * deltaT ** 2;
+                arm.theta = arm.theta + deltaTheta;
+
+                // If statement to ensrue the position of the arm is within the acceptable min and max theta
+                if (arm.R_or_L == "r") {
+                    if (arm.theta > max_theta_r) {
+                        //If arm is a right arm and arm.theta is greater than the max allowable theta for a right arm, then just set arm.theta = to the max allowable theta
+                        arm.theta = max_theta_r;
+                        arm.w = 0;
+                    } else if (arm.theta < min_theta_r) {
+                        //If arm is a right arm and arm.theta is less than the min allowable theta for a right arm, then just set arm.theta = to the min allowable theta
+                        arm.theta = min_theta_r;
+                        arm.w = 0;
+                    } else {
+                        //Else, if arm.theta is within the allowable range, behave normally (do nothing)
+                    }
+                } else {
+                    if (arm.theta > max_theta_l) {
+                        //If arm is a right arm and arm.theta is greater than the max allowable theta for a right arm, then just set arm.theta = to the max allowable theta
+                        arm.theta = max_theta_l;
+                        arm.w = 0;
+                    } else if (arm.theta < min_theta_l) {
+                        //If arm is a right arm and arm.theta is less than the min allowable theta for a right arm, then just set arm.theta = to the min allowable theta
+                        arm.theta = min_theta_l;
+                        arm.w = 0;
+                    } else {
+                        //Else, if arm.theta is within the allowable range, behave normally (do nothing)
+                    }
+                }
+
+                arm.pos2[0] = Math.cos(arm.theta) * arm.length + arm.pos1[0];
+                arm.pos2[1] = Math.sin(arm.theta) * arm.length + arm.pos1[1];
+                arm.cogVector[0] = Math.cos(arm.theta) * (arm.length / 2);
+                arm.cogVector[1] = Math.sin(arm.theta) * (arm.length / 2);
+            }
+
+            function updateSecondaryArmPosition(arm) {
+                // Fill this out
+                arm.pos2 = findArcIntersect(rightPrimaryArm, leftPrimaryArm);
+            }
+
+            function updatePosition() {
+                // this updatePosition() function will just call a bunch of other functions that actually handle the moving of each of the points for the various arms
+                for (element in drawList) {
+                    if (drawList[element].type == "primary") {
+                        updatePrimaryArmPosition(drawList[element]);
+                    } else if (drawList[element].type == "secondary") {
+                        updateSecondaryArmPosition(drawList[element]); // Need to create a function for this
+                    }
+                }
+            }
+
+            // Event listener for right arrow key
+            window.addEventListener("keydown", function (event) {
+                if (event.key === "ArrowRight") {
+                    isRightKeyPressed = true;
+                }
+            });
+
+            // Event listener for keyup event
+            window.addEventListener("keyup", function (event) {
+                if (event.key === "ArrowRight") {
+                    isRightKeyPressed = false;
+                }
+            });
+
+            // Event listener for left arrow key
+            window.addEventListener("keydown", function (event) {
+                if (event.key === "ArrowLeft") {
+                    isLeftKeyPressed = true;
+                }
+            });
+
+            // Event listener for keyup event
+            window.addEventListener("keyup", function (event) {
+                if (event.key === "ArrowLeft") {
+                    isLeftKeyPressed = false;
+                }
+            });
+
+            window.onload = function () {
+                //JS will wait for the entier page to load including all images and external content before trigging the window.onload
+                // 1. Get the device pixel ratio
+                ratio = window.devicePixelRatio || 1;
+
+                // 2. Set the initial canvas.width and canvas.height
+                canvas.width = 500;
+                canvas.height = 400;
+
+                // 3. Make sure the canvas element stays the same size
+                canvas.style.width = canvas.width + "px";
+                canvas.style.height = canvas.height + "px";
+
+                // 4. Scale the canvas dims by the pixel ratio
+                canvas.width *= ratio;
+                canvas.height *= ratio;
+
+                // 5. scale the context by the pixel ratio
+                ctx.scale(ratio, ratio);
+
+                drawRobot();
+            };
+
+            // No resize listener for this app because the canvas size is set to a specifix x, y value rather than just the window size
+        </script>
+    </body>
 </html>
