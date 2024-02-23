@@ -152,6 +152,7 @@
         let c = primeArmL.pos2[0];
         let d = primeArmL.pos2[1];
         let r = secondaryArmLen;
+        let x;
         
         let under_the_root = (
             Math.pow(-4 * Math.pow(a, 3) + 4 * Math.pow(a, 2) * c - 4 * a * Math.pow(b, 2) + 8 * a * b * d + 4 * a * Math.pow(c, 2) - 4 * a * Math.pow(d, 2) - 4 * Math.pow(b, 2) * c + 8 * b * c * d - 4 * Math.pow(c, 3) - 4 * c * Math.pow(d, 2), 2) - 
@@ -163,19 +164,29 @@
         }
         
         let numerator = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c + Math.sqrt(under_the_root) + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
+        let numerator2 = (4 * Math.pow(a, 3) - 4 * Math.pow(a, 2) * c - Math.sqrt(under_the_root) + 4 * a * Math.pow(b, 2) - 8 * a * b * d - 4 * a * Math.pow(c, 2) + 4 * a * Math.pow(d, 2) + 4 * Math.pow(b, 2) * c - 8 * b * c * d + 4 * Math.pow(c, 3) + 4 * c * Math.pow(d, 2));
 
         let denominator = 2 * (4 * Math.pow(a, 2) - 8 * a * c + 4 * Math.pow(b, 2) - 8 * b * d + 4 * Math.pow(c, 2) + 4 * Math.pow(d, 2));
 
-        let x = numerator / denominator;
+        let x1 = numerator / denominator;   // Positive X
+        let x2 = numerator2 / denominator;  // Negative X
+
+        if ((Math.PI - primeArmL.theta) > primeArmR.theta){
+            x = x1;
+        } else{
+            x = x2;
+        }
+        
 
         var y = b + Math.sqrt(-Math.pow(a, 2) + 2 * a * x + Math.pow(r, 2) - Math.pow(x, 2));
         let sArmVector_R = [(x - primeArmR.pos2[0]), (y - primeArmR.pos2[1])];
         let sArmVector_L = [(x - primeArmL.pos2[0]), (y - primeArmL.pos2[1])];
 
-        let secondaryArm_R_Radius_Calculated = Math.sqrt((sArmVector_R[0] ** 2) + (sArmVector_R[1] ** 2));
-        let secondaryArm_L_Radius_Calculated = Math.sqrt((sArmVector_L[0] ** 2) + (sArmVector_L[1] ** 2));
-        console.log(secondaryArm_R_Radius_Calculated);
-        console.log(secondaryArm_L_Radius_Calculated);
+        //Debugging Stuff
+        //let secondaryArm_R_Radius_Calculated = Math.sqrt((sArmVector_R[0] ** 2) + (sArmVector_R[1] ** 2));
+        //let secondaryArm_L_Radius_Calculated = Math.sqrt((sArmVector_L[0] ** 2) + (sArmVector_L[1] ** 2));
+        var debug = [primeArmL.theta, primeArmR.theta];
+        console.log(debug);
 
        return [x, y]
     }
