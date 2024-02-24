@@ -1,3 +1,28 @@
+Game Name: Pick N Place
+
+
+
+-- Game Mechanics and Design --
+
+- This is an endurance survival game. Doodle jump style. Your goal is to continue to pick up boxes and place them
+    in the drop off zone. If you miss a drop off zone or if you accidentally nock the box from the side, you fail
+    and go back to the start. **NOTE** If this turns out to be too hard, you could try having different box types.
+    Some heavier, some lighter, some that you can pick up from any side, others that you can only grab from the top.
+
+- There is a score counter on the top for the number of boxes you successfully pick and place.
+
+- Ultimately, a global leaderboard would be super super cool.
+
+
+
+Look and Feel:
+    - This is your first game. Lets be realistic. It probably wont be a masterpiece but try to at least make
+        it look somewhat clean
+    - Game canvas should be centered in the window
+
+
+
+
 Robot Game Data Structure Planning
 
 Global constants
@@ -14,6 +39,8 @@ min and max theta for the arms - just the max and min allowable rotation angle
 
 Global Functions:
     - findArcIntersect
+    - cross product
+    - some other vector math functions may be needed.
 
 Main Class: Game
     Constructor Needs:
@@ -35,6 +62,7 @@ Main Class: Game
         - Animate. Does what it says. This will handle the animation of the robot, the payloads to grab,
         the drop off points for those payloads
                 - The actual mechanics of the animate will be as such:
+                    - Clear the canvas of the previous frame.
                     - Loop through the drawList and call .draw on all of its items in order.
                     - At the end you will have the request animation frame stuff
 
@@ -93,6 +121,13 @@ Subclass: SecondaryArm
 
     Methods:
 
+Subclass: RobotBody
+    Constructor Needs:
+        Inpts:
+
+        Initializations:
+
+    Methods:
 
 Subclass: Payload
     Constructor Needs:
