@@ -1,5 +1,9 @@
 // All code for the robot game will go here.
 
+// Game Variables
+let gameAnimation;
+let game;
+
 // Global Constants:
 
 const primaryArmMass = 1;
@@ -9,13 +13,13 @@ const secondaryArmI = 1;
 
 // Physics Constants and Variables:
 const g = 9.81;    // Acceleration due to gravity
-const deltaT = 1000 / 60        //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
-
+const deltaT = 0.003        
+const frameTime = 1000/60    //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
 
 // Canvas Constants:
 
-const canvas = document.getElementById("Canvas1");
-const ctx = canvas.getContext("2d");
+var canvas = document.getElementById("Canvas1");
+var ctx = canvas.getContext("2d");
 
 // Adjustable Input Variables:
 
@@ -112,7 +116,44 @@ function convertRobotCoord_2_CanvasCoord(point) {
 
 
 // Game class - Overarching class that runs the entire game
+class Game {
+    #Robot
+    #drawList
+    constructor() {
+        this.#Robot = new Robot;
+        this.#drawList = [this.#Robot];
+        this.lastFrameTime = 0;
+        this.timer = 0;
 
+    }
+
+    #animate(timeStamp) {
+        const deltaTime = timeStamp - this.lastFrameTime;
+        this.lastFrameTime = timeStamp;
+
+        if (this.timer > frameTime) {  // If the timer is greater than the interval mark, draw a frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Looping through all the items in draw list
+            for (var element of this.#drawList) {
+                element.draw();
+                element.updatePos();
+            }
+        } else {
+            this.timer += frameTime
+        }
+
+        gameAnimation = requestAnimationFrame(this.#animate.bind(this));
+
+    }
+
+    run(){
+        this.#animate(0);
+    }
+
+
+
+
+}
 
 
 
@@ -196,7 +237,7 @@ class Robot {
             // We intentionaly do nothing if the key is not pressed
         }
         if (isLeftKeyPressed) {
-            this.LeftPrimaryArm.T -= motorTorque;
+            this.LeftPrimaryArm.T += motorTorque;
         } else {
         }
         
@@ -356,9 +397,35 @@ const bot = new Robot;
 
 
 // Testing
-bot.draw();
-bot.updatePos();
-ctx.clearRect(0, 0, canvas.width, canvas.height);
-bot.draw();
+
+window.onload = function(){     //JS will wait for the entier page to load including all images and external content before trigging the window.onload
+    canvas = document.getElementById('Canvas1');  //Creating a constant called canvas and setting it equal to the canvas1 canvas we created back in the HTML file
+    ctx = canvas.getContext('2d');
+
+    // Scaling for Retina //
+    // 1. Get the device pixel ratio
+    let ratio = window.devicePixelRatio || 1;
+
+    // 2. Set the initial canvas.width and canvas.height
+    canvas.width = 500;
+    canvas.height = 400;
+
+    // 3. Make sure the canvas element stays the same size
+    canvas.style.width = canvas.width + "px";
+    canvas.style.height = canvas.height + "px";
+
+    // 4. Scale the canvas dims by the pixel ratio
+    canvas.width *= ratio;
+    canvas.height *= ratio;
+
+    // 5. scale the context by the pixel ratio
+    ctx.scale(ratio, ratio);
+
+    game = new Game();
+    game.run();
+
+}
+
+
 
 
