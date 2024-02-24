@@ -23,9 +23,9 @@ var ctx = canvas.getContext("2d");
 
 // Adjustable Input Variables:
 
-const primaryArmLength = 40;
-const secondaryArmLength = 85;
-const motorOffset = 15;
+const primaryArmLength = 40 * 2.5;
+const secondaryArmLength = 85 * 2.5;
+const motorOffset = 15 * 2.5;
 const minThetaR = -0.523599;
 const minThetaL = 1.480039;
 const maxThetaR = 1.661553;
@@ -110,7 +110,7 @@ function crossProduct(vector1, vector2) {
 function convertRobotCoord_2_CanvasCoord(point) {
     // takes a point in robot coordinates and converts it to canvas coordinates
     // The origin of robot coordinates will map to (250, 100) in canvas coordinates
-    let canvasCoords = [point[0] + 250, point[1] + 100];
+    let canvasCoords = [point[0] + 250, point[1] + 55];
     return canvasCoords;
 }
 
@@ -156,7 +156,6 @@ class Game {
 }
 
 
-
 // Robot Class
 class Robot {
     constructor() {
@@ -172,44 +171,100 @@ class Robot {
 
         // Style Variables
         this.primaryArmStyle = 'black';
-        this.secondaryArmStyle = 'blue';
-        this.armLineWidth = 3;
+        this.secondaryArmStyle = '#464F51';
+        this.motorCoverStyle = '#464F51';
+        this.secondaryJointStyle = '#464F51';
+        this.smileStyle = '#DDBEA8';
+        this.eyeBrowStyle = '#B4EDD2';
+        this.primaryArmLineWidth = 12;
+        this.secondaryArmLineWidth = 3;
+        this.motorCoverRadius = 10;
+        this.secondaryJointRadius = 4;
 
     }
     
     draw() {
+        // Drawing the Robot Body
+        let cBodyOrigin = convertRobotCoord_2_CanvasCoord([-motorOffset * 2, -motorOffset]);
+        ctx.beginPath();
+        ctx.strokeStyle = 'black';
+        ctx.fillStyle = this.motorCoverStyle;
+        ctx.lineWidth = 10;
+        ctx.strokeRect(cBodyOrigin[0], cBodyOrigin[1], 4 * motorOffset, 2 * motorOffset);
+        ctx.fillRect(cBodyOrigin[0], cBodyOrigin[1], 4 * motorOffset, 2 * motorOffset);
+        ctx.stroke();
+
+        // Drawing the Smile :)
+        let smilePoint1 = convertRobotCoord_2_CanvasCoord([-motorOffset * 1.75, 0]);
+        let smilePoint2 = convertRobotCoord_2_CanvasCoord([-motorOffset * 1.75, motorOffset * 0.75]);
+        let smilePoint3 = convertRobotCoord_2_CanvasCoord([motorOffset * 1.75, motorOffset * 0.75]);
+        let smilePoint4 = convertRobotCoord_2_CanvasCoord([ motorOffset * 1.75, 0]);
+
+        ctx.beginPath();
+        ctx.strokeStyle = this.smileStyle;
+        ctx.lineWidth = 6;
+        ctx.moveTo(smilePoint1[0], smilePoint1[1]);
+        ctx.lineTo(smilePoint2[0], smilePoint2[1]);
+        ctx.lineTo(smilePoint3[0], smilePoint3[1]);
+        ctx.lineTo(smilePoint4[0], smilePoint4[1]);
+        ctx.stroke();
+
+        // Drawing the Eyebrows
+        let browPoint1R = convertRobotCoord_2_CanvasCoord([motorOffset - (motorOffset * 0.5), -motorOffset + (motorOffset * 0.5)]);
+        let browPoint2R = convertRobotCoord_2_CanvasCoord([motorOffset + (motorOffset * 0.5), -motorOffset + (motorOffset * 0.25)]);
+        let browPoint1L = convertRobotCoord_2_CanvasCoord([(-1 * (motorOffset - (motorOffset * 0.5))), -motorOffset + (motorOffset * 0.5)]);
+        let browPoint2L = convertRobotCoord_2_CanvasCoord([(-1 * (motorOffset + (motorOffset * 0.5))), -motorOffset + (motorOffset * 0.25)])
+
+        ctx.beginPath();
+        ctx.strokeStyle = this.eyeBrowStyle;
+        ctx.lineWidth = 5;
+        ctx.moveTo(browPoint1R[0], browPoint1R[1]);
+        ctx.lineTo(browPoint2R[0], browPoint2R[1]);
+        ctx.moveTo(browPoint1L[0], browPoint1L[1]);
+        ctx.lineTo(browPoint2L[0], browPoint2L[1]);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = this.eyeBrowStyle;
+        ctx.lineWidth = 5;
+        ctx.moveTo(browPoint1L[0], browPoint1L[1]);
+        ctx.lineTo(browPoint2L[0], browPoint2L[1]);
+        ctx.stroke();
+
+
         // Drawing RightPrimaryArm
         ctx.beginPath();
-        let cCoord1 = convertRobotCoord_2_CanvasCoord(this.RightPrimaryArm.pos1);
+        ctx.lineWidth = 10;
+        let cMotorCoverCoord_R = convertRobotCoord_2_CanvasCoord(this.RightPrimaryArm.pos1);
 
-        let cCoord2 = convertRobotCoord_2_CanvasCoord(this.RightPrimaryArm.pos2);
-        ctx.moveTo(cCoord1[0], cCoord1[1]);
-        ctx.lineTo(cCoord2[0], cCoord2[1]);
+        let cSecondaryJointCoord_R = convertRobotCoord_2_CanvasCoord(this.RightPrimaryArm.pos2);
+        ctx.moveTo(cMotorCoverCoord_R[0], cMotorCoverCoord_R[1]);
+        ctx.lineTo(cSecondaryJointCoord_R[0], cSecondaryJointCoord_R[1]);
 
         ctx.strokeStyle = this.primaryArmStyle;
-        ctx.lineWidth = this.armLineWidth;
+        ctx.lineWidth = this.primaryArmLineWidth;
         ctx.stroke();
 
         // Drawing LeftPrimaryArm
         ctx.beginPath();
-        cCoord1 = convertRobotCoord_2_CanvasCoord(this.LeftPrimaryArm.pos1);
-        cCoord2 = convertRobotCoord_2_CanvasCoord(this.LeftPrimaryArm.pos2);
-        ctx.moveTo(cCoord1[0], cCoord1[1]);
-        ctx.lineTo(cCoord2[0], cCoord2[1]);
+        let cMotorCoverCoord_L = convertRobotCoord_2_CanvasCoord(this.LeftPrimaryArm.pos1);
+        let cSecondaryJointCoord_L = convertRobotCoord_2_CanvasCoord(this.LeftPrimaryArm.pos2);
+        ctx.moveTo(cMotorCoverCoord_L[0], cMotorCoverCoord_L[1]);
+        ctx.lineTo(cSecondaryJointCoord_L[0], cSecondaryJointCoord_L[1]);
                 
         ctx.strokeStyle = this.primaryArmStyle;
-        ctx.lineWidth = this.armLineWidth;
+        ctx.lineWidth = this.primaryArmLineWidth;
         ctx.stroke();
 
         // Drawing RightSecondaryArm
         ctx.beginPath();
-        cCoord1 = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos1);
-        cCoord2 = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos2);
+        let cCoord1 = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos1);
+        let cCoord2 = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos2);
         ctx.moveTo(cCoord1[0], cCoord1[1]);
         ctx.lineTo(cCoord2[0], cCoord2[1]);
 
         ctx.strokeStyle = this.secondaryArmStyle;
-        ctx.lineWidth = this.armLineWidth;
+        ctx.lineWidth = this.secondaryArmLineWidth;
         ctx.stroke();
 
         //Drawing LeftSecondaryArm
@@ -220,8 +275,46 @@ class Robot {
         ctx.lineTo(cCoord2[0], cCoord2[1]);
 
         ctx.strokeStyle = this.secondaryArmStyle;
-        ctx.lineWidth = this.armLineWidth;
+        ctx.lineWidth = this.secondaryArmLineWidth;
         ctx.stroke();
+
+        //Drawing MotorCovers
+        ctx.beginPath()
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fillStyle = this.motorCoverStyle;
+        ctx.lineWidth = 10;
+        ctx.arc(cMotorCoverCoord_R[0], cMotorCoverCoord_R[1], this.motorCoverRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fillStyle = this.motorCoverStyle;
+        ctx.arc(cMotorCoverCoord_L[0], cMotorCoverCoord_L[1], this.motorCoverRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fill();
+
+        //Drawing Secondary Joints
+        ctx.beginPath();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.lineWidth = 8;
+        ctx.fillStyle = this.secondaryJointStyle;
+        ctx.arc(cSecondaryJointCoord_R[0], cSecondaryJointCoord_R[1], this.secondaryJointRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fillStyle = this.secondaryJointStyle
+        ctx.lineWidth = 8;
+        ctx.arc(cSecondaryJointCoord_L[0], cSecondaryJointCoord_L[1], this.secondaryJointRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.strokeStyle = this.primaryArmStyle;
+        ctx.fill();
+
         
     }
 
@@ -310,9 +403,6 @@ class Robot {
         this.RightSecondaryArm.pos2 = findArcIntersect(this.RightPrimaryArm, this.LeftPrimaryArm);
         this.LeftSecondaryArm.pos2 = this.RightSecondaryArm.pos2;
 
-
-        // Updating the left secondary arm positions
-
     }
 
 }
@@ -387,12 +477,6 @@ window.addEventListener("keyup", function (event) {
         isLeftKeyPressed = false;
     }
 });
-
-
-
-
-// Game constants
-const bot = new Robot;
 
 
 
