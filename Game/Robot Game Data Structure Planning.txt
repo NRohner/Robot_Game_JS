@@ -12,7 +12,8 @@ motorOffset - distance between the center of the robot coordinate system and the
 motorTorque
 min and max theta for the arms - just the max and min allowable rotation angle
 
-
+Global Functions:
+    - findArcIntersect
 
 Main Class: Game
     Constructor Needs:
@@ -42,8 +43,6 @@ Main Class: Game
             - All sub classes that occur in drawList must have a .updatePos function that updates their position
             according to the time incriment.
 
-
-
         - Will do the state management for the game.
             - Which game mode we are in
             - Player score
@@ -58,16 +57,15 @@ Subclass: Robot
         Initializations:
         2x PrimaryArm Objects
         2x SecondaryArm Objects
-        Robot Body object - This is just a simple drawing representation of a robot. Try to be creative and make it cute
+        Robot Body object - This is just a simple drawing representation of a robot baseplate. Try to be creative and make it cute
                             Would be very nice if you could draw it all with canvas commands. But could use a photo if needed.
 
 
     Methods:
     - draw - draws all the arms. Does not call the request next animation frame thing. Only the top level animate function
     - updatePos - updates the position of all the arms. I think we will need to incorporate our gravity and friction stuff into this method
-
-
-
+    
+    
 Subclass: PrimaryArm
     Constructor Needs:
         Inputs:
@@ -89,6 +87,7 @@ Subclass: PrimaryArm
 Subclass: SecondaryArm
     Constructor Needs:
         Inputs:
+        - Parent - The primary arm that this secondary arm is attacehd to
 
         Initializations:
 
@@ -96,6 +95,16 @@ Subclass: SecondaryArm
 
 
 Subclass: Payload
+    Constructor Needs:
+        Inputs:
+        - Mass - This will make it harder or easier to lift. Need to somehow incorporate this into the physics system
+
+        Initializations:
+
+    Methods:
+
+
+Subclass: DropOff - Target point where payloads will be dropped
     Constructor Needs:
         Inputs:
 
