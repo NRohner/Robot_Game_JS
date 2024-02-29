@@ -44,6 +44,7 @@ let isSpaceKeyPressed = false;
 let isRightKeyPressed = false;
 let isLeftKeyPressed = false;
 
+var gripperPosition;
 
 // Global Functions
 function findArcIntersect(primaryArmR, primaryArmL) {   // Finds the connection point for the secondary arms.
@@ -119,9 +120,11 @@ function convertRobotCoord_2_CanvasCoord(point) {
 class Game {
     #Robot
     #drawList
+    #Payload
     constructor() {
         this.#Robot = new Robot;
-        this.#drawList = [this.#Robot];
+        this.#Payload = new Payload(1, 25, 25, 250, 300);
+        this.#drawList = [this.#Robot, this.#Payload];
         this.lastFrameTime = 0;
         this.timer = 0;
 
@@ -139,10 +142,24 @@ class Game {
                 element.updatePos();
             }
         } else {
-            this.timer += frameTime
+            this.timer += frameTime;
         }
 
         gameAnimation = requestAnimationFrame(this.#animate.bind(this));
+
+    }
+
+    grabAttempt(){
+        console.log("grab attempt")
+        let gripperPosC = convertRobotCoord_2_CanvasCoord(this.#Robot.RightSecondaryArm.pos2)
+        let payloadPosC = this.#Payload.topCenter
+        let distanceToPayloadHandle = Math.sqrt(((payloadPosC[0] - gripperPosC[0]) ** 2) + ((payloadPosC[1] - gripperPosC[1]) ** 2))
+
+        if (distanceToPayloadHandle > 20) {     // If the gripper is further than 20px from the handle, it wont pick it up
+
+        } else {        // Else if the gripper is within 20px the paylod is picked up
+            this.#Payload.isGrabbed = true;
+        }
 
     }
 
@@ -402,6 +419,7 @@ class Robot {
         // Updating the right secondary arm positions
         this.RightSecondaryArm.pos2 = findArcIntersect(this.RightPrimaryArm, this.LeftPrimaryArm);
         this.LeftSecondaryArm.pos2 = this.RightSecondaryArm.pos2;
+        gripperPosition = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos2);
 
     }
 
@@ -441,7 +459,50 @@ class SecondaryArm {    //Need to come back to this once the robot class is defi
 
 
 // Payload Class
+class Payload {
+    constructor(mass, sizeX, sizeY, posX, posY){
+        this.mass = mass;
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.posX = posX;   // the x coordinate of the location of the payload. Measured from the top left corner of the rectangel in canvas coords
+        this.posY = posY;   // the y coordinate in canvas coords
+        this.topCenter = [this.posX + (this.sizeX / 2), this.posY];
+        this.isGrabbed = false;
+        
 
+        this.payloadFillStyle = '#B4EDD2';
+    }
+
+    draw(){
+        ctx.beginPath();
+        ctx.strokeStyle = 'black';
+        ctx.fillStyle = this.payloadFillStyle;
+        ctx.lineWidth = 10;
+        ctx.strokeRect(this.posX, this.posY, this.sizeX, this.sizeY);
+        ctx.fillRect(this.posX, this.posY, this.sizeX, this.sizeY);
+        ctx.stroke();
+
+    }
+
+    updatePos(){
+        if (this.isGrabbed == true) {
+            this.posX = gripperPosition[0] - (this.sizeX / 2)
+            this.posY = gripperPosition[1]
+        } else {
+
+        }
+
+
+    }
+
+    grabAttempt(){
+
+    }
+
+    grab(){
+
+    }
+}
 
 
 
@@ -479,7 +540,17 @@ window.addEventListener("keyup", function (event) {
     }
 });
 
+// Event listener for space bar keypress - different from keydown or keyup
+window.addEventListener("keypress" , function(event){
+    game.grabAttempt();
+    if (event.key === "Space" && isSpaceKeyPressed == false) {
+        isSpaceKeyPressed = true;
+    } else if (event.key ==="Space" && isSpaceKeyPressed == true) {
+        isSpaceKeyPressed = false;
+    }
+});
 
+// Event listener for space bar keyup
 
 // Testing
 
