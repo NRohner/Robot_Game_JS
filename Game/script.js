@@ -4,6 +4,9 @@
 let gameAnimation;
 let game;
 
+// Global State Variables
+
+
 // Global Constants:
 
 const primaryArmMass = 1;
@@ -120,11 +123,10 @@ function convertRobotCoord_2_CanvasCoord(point) {
 class Game {
     #Robot
     #drawList
-    #Payload
     constructor() {
         this.#Robot = new Robot;
-        this.#Payload = new Payload(1, 25, 25, 250, 300);
-        this.#drawList = [this.#Robot, this.#Payload];
+        this.Payload = new Payload(1, 25, 25, 250, 300);
+        this.#drawList = [this.#Robot, this.Payload];
         this.lastFrameTime = 0;
         this.timer = 0;
 
@@ -152,15 +154,20 @@ class Game {
     grabAttempt(){
         console.log("grab attempt")
         let gripperPosC = convertRobotCoord_2_CanvasCoord(this.#Robot.RightSecondaryArm.pos2)
-        let payloadPosC = this.#Payload.topCenter
+        let payloadPosC = this.Payload.topCenter
         let distanceToPayloadHandle = Math.sqrt(((payloadPosC[0] - gripperPosC[0]) ** 2) + ((payloadPosC[1] - gripperPosC[1]) ** 2))
 
         if (distanceToPayloadHandle > 20) {     // If the gripper is further than 20px from the handle, it wont pick it up
 
         } else {        // Else if the gripper is within 20px the paylod is picked up
-            this.#Payload.isGrabbed = true;
+            this.Payload.isGrabbed = true;
         }
 
+    }
+
+    releaseGrab(){
+        this.Payload.isGrabbed = false;
+        this.Payload.atStartPosition = false;
     }
 
     run(){
@@ -468,7 +475,12 @@ class Payload {
         this.posY = posY;   // the y coordinate in canvas coords
         this.topCenter = [this.posX + (this.sizeX / 2), this.posY];
         this.isGrabbed = false;
-        
+        this.atStartPosition = true;
+        this.velX = 0;
+        this.velY = 0;
+        this.previousYVel = 0;
+        this.previousPosX = 0;
+        this.previousPosY = 0;
 
         this.payloadFillStyle = '#B4EDD2';
     }
@@ -485,11 +497,29 @@ class Payload {
     }
 
     updatePos(){
-        if (this.isGrabbed == true) {
-            this.posX = gripperPosition[0] - (this.sizeX / 2)
-            this.posY = gripperPosition[1]
-        } else {
+        if (this.isGrabbed == true) {   // Movement instructions for when the payload is grabbed
+            // Storing the previous position. We will need this for the velocity calculation
+            this.previousPosX = this.posX;
+            this.previousPosY = this.posY;
 
+            // Updating our current X and Y position
+            this.posX = gripperPosition[0] - (this.sizeX / 2);
+            this.posY = gripperPosition[1];
+
+            // Calculating our X and Y velocity
+            //this.previousYVel = this.velY;
+            this.velX = (this.posX - this.previousPosX) / deltaT;
+            this.velY = (this.posY - this.previousPosY) / deltaT;
+
+        } else if (this.isGrabbed == false && this.atStartPosition == false) {  // Movement instructions for falling payload
+            this.posX = this.posX + (this.velX * deltaT);   // X velocity does not change once the payload is dropped.
+            
+            // Handling the Y components of velocity and position
+            this.velY = this.velY + 50;
+            this.posY = this.posY + (this.velY * deltaT);
+
+            console.log(this.velY);
+            console.log(this.posY);
         }
 
 
@@ -505,7 +535,126 @@ class Payload {
 }
 
 
+// Intro/Start slides Class
+class Intro {
+    constructor() {
+        // Title Font Properties
+        this.titleFontSize = 60;
+        this.titleFontFamily = 'Helvetica';
+        this.titleFontStyle = 'normal';
+        this.titleText = "Pick & Place";
+        this.titlePosX = 0;
+        this.titlePosY = 0;
 
+        // Sub Title Font Propertis
+        this.subtitleFontSize = 10;
+        this.subtitleFontFamily = 'Helvetica';
+        this.subtitleFontStyle = 'oblique';
+        this.subtitleText = 'By Nick Rohner';
+        this.subtitlePosX = 0;
+        this.subtitlePosY = 0;
+
+        // General Button Propertis
+        this.buttonWidth = 150.0;
+        this.buttonHeight = 50.0;
+
+        // Info Button Properties
+        this.infoButtonText = 'Instructions';
+        this.infoButtonColor = '#B4EDD2';
+        this.infoButtonPosX = 50;
+        this.infoButtonPosY = 300;
+
+        // Start Button Properties
+        this.startButtonText = 'Start'
+        this.startButtonColor = '#B4EDD2';
+
+        this.startButtonPosX = 300.0;
+        this.startButtonPosY = 300.0;
+
+    }
+
+    drawText() {
+        // Drawing the main title
+        ctx.font = this.titleFontStyle + ' ' + this.titleFontSize + 'pt ' + this.titleFontFamily;
+        ctx.fillStyle = '#000'; // Text color
+        let textWidth = ctx.measureText(this.titleText).width;
+        this.titlePosX = (500 / 2) - (textWidth / 2);      // Centered horizontally
+        this.titlePosY = 100; // Centered vertically
+
+        ctx.fillText(this.titleText, this.titlePosX, this.titlePosY);
+
+        // Drawing the subtitle
+        ctx.font = this.subtitleFontStyle + ' ' + this.subtitleFontSize + 'pt ' + this.subtitleFontFamily;
+        ctx.fillStyle = '#000'; // Different Text color for subtitle (e.g., red)
+        textWidth = ctx.measureText(this.subtitleText).width;
+        this.subtitlePosX = this.titlePosX;      // Centered horizontally
+        this.subtitlePosY = 130; // Centered vertically
+
+        ctx.fillText(this.subtitleText, this.subtitlePosX, this.subtitlePosY);
+    
+    }
+
+    drawStartButton() {
+        ctx.fillStyle = this.startButtonColor;
+        ctx.fillRect(this.startButtonPosX, this.startButtonPosY, this.buttonWidth, this.buttonHeight);
+
+        ctx.font = "14pt Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.startButtonText, this.startButtonPosX + this.buttonWidth / 2, this.startButtonPosY + this.buttonHeight / 2);
+
+        // Add click event listener to the button
+        canvas.addEventListener("click", (event) => {
+            let rect = canvas.getBoundingClientRect();
+
+            if (
+                (event.clientX - rect.left) >= this.startButtonPosX &&
+                (event.clientX - rect.left) <= (this.startButtonPosX + this.buttonWidth) &&
+                (event.clientY - rect.top) >= this.startButtonPosY &&
+                (event.clientY - rect.top) <= (this.startButtonPosY + this.buttonHeight)
+            ) {
+                console.log("You clicked the start button");
+                //game = new Game();
+                //game.run();
+            }
+      });
+    }
+
+    drawInfoButton() {
+        ctx.fillStyle = this.infoButtonColor;
+        ctx.fillRect(this.infoButtonPosX, this.infoButtonPosY, this.buttonWidth, this.buttonHeight);
+
+        ctx.font = "14pt Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.infoButtonText, this.infoButtonPosX + this.buttonWidth / 2, this.infoButtonPosY + this.buttonHeight / 2);
+
+        // Add click event listener to the button
+        canvas.addEventListener("click", (event) => {
+            let rect = canvas.getBoundingClientRect();
+
+            if (
+                (event.clientX - rect.left) >= this.infoButtonPosX &&
+                (event.clientX - rect.left) <= (this.infoButtonPosX + this.buttonWidth) &&
+                (event.clientY - rect.top) >= this.infoButtonPosY &&
+                (event.clientY - rect.top) <= (this.infoButtonPosY + this.buttonHeight)
+            ) {
+                console.log("You clicked the info button");
+                //this.clickHandler();
+            }
+      });
+    }
+
+    clickHandler(){
+        console.log('You clicked the button!');
+    }
+
+    clear() {
+
+    }
+}
 
 // Dropoff Class
 
@@ -542,7 +691,11 @@ window.addEventListener("keyup", function (event) {
 
 // Event listener for space bar keypress - different from keydown or keyup
 window.addEventListener("keypress" , function(event){
+    if (game.Payload.isGrabbed == false) {
     game.grabAttempt();
+    } else {
+        game.releaseGrab();
+    }
     if (event.key === "Space" && isSpaceKeyPressed == false) {
         isSpaceKeyPressed = true;
     } else if (event.key ==="Space" && isSpaceKeyPressed == true) {
@@ -577,7 +730,16 @@ window.onload = function(){     //JS will wait for the entier page to load inclu
     // 5. scale the context by the pixel ratio
     ctx.scale(ratio, ratio);
 
-    game = new Game();
-    game.run();
+    // 6. Display title slide
+    title = new Intro();
+    title.drawText();
+    title.drawStartButton();
+    title.drawInfoButton();
+
+    // 6.5. Step through instructions if user has elected to see them.
+
+    // 7. Start the Game. This part is commented out while I work on the intro and title slides.
+    //game = new Game();
+    //game.run();
 
 }
