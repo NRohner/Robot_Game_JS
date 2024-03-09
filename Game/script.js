@@ -5,7 +5,7 @@ let gameAnimation;
 let game;
 
 // Global State Variables
-
+let GameStates = ['title', 'info1', 'info2', 'info3', 'info4', 'info5', 'game', 'gameover'];     // List of all possible game states
 
 // Global Constants:
 
@@ -118,15 +118,13 @@ function convertRobotCoord_2_CanvasCoord(point) {
     return canvasCoords;
 }
 
-
 // Game class - Overarching class that runs the entire game
 class Game {
-    #Robot
     #drawList
     constructor() {
-        this.#Robot = new Robot;
+        this.Robot = new Robot;
         this.Payload = new Payload(1, 25, 25, 250, 300);
-        this.#drawList = [this.#Robot, this.Payload];
+        this.#drawList = [this.Robot, this.Payload];
         this.lastFrameTime = 0;
         this.timer = 0;
 
@@ -151,9 +149,13 @@ class Game {
 
     }
 
+    #intro() {
+
+    }
+
     grabAttempt(){
         console.log("grab attempt")
-        let gripperPosC = convertRobotCoord_2_CanvasCoord(this.#Robot.RightSecondaryArm.pos2)
+        let gripperPosC = convertRobotCoord_2_CanvasCoord(this.Robot.RightSecondaryArm.pos2)
         let payloadPosC = this.Payload.topCenter
         let distanceToPayloadHandle = Math.sqrt(((payloadPosC[0] - gripperPosC[0]) ** 2) + ((payloadPosC[1] - gripperPosC[1]) ** 2))
 
@@ -182,6 +184,7 @@ class Game {
 
 // Robot Class
 class Robot {
+    #render
     constructor() {
         // Creating our arm objects
         this.RightPrimaryArm = new PrimaryArm(motorOffset, 0);
@@ -205,9 +208,15 @@ class Robot {
         this.motorCoverRadius = 10;
         this.secondaryJointRadius = 4;
 
+        // Render Variable
+        this.#render = true;
+
     }
     
     draw() {
+
+
+
         // Drawing the Robot Body
         let cBodyOrigin = convertRobotCoord_2_CanvasCoord([-motorOffset * 2, -motorOffset]);
         ctx.beginPath();
@@ -430,6 +439,15 @@ class Robot {
 
     }
 
+    renderON() {
+        this.#render = true;
+    }
+
+    renderOFF() {
+        this.#render = false;
+    }
+
+
 }
 
 
@@ -535,6 +553,63 @@ class Payload {
 }
 
 
+// Dropoff Class
+
+
+// Button Class
+class Button {
+    #render
+    constructor(text, id, xPos, yPos, width, height, color) {
+        this.buttonText = text;
+        this.buttonColor = color;
+        this.buttonPosX = xPos;
+        this.buttonPosY = yPos;
+        this.buttonWidth = width;
+        this.buttonHeight = height;
+        this.buttonID = id;
+
+        this.#render = true;
+
+        // Click Listener
+        canvas.addEventListener("click", (event) => {
+            let rect = canvas.getBoundingClientRect();
+
+            if (
+                (event.clientX - rect.left) >= this.buttonPosX &&
+                (event.clientX - rect.left) <= (this.buttonPosX + this.buttonWidth) &&
+                (event.clientY - rect.top) >= this.buttonPosY &&
+                (event.clientY - rect.top) <= (this.buttonPosY + this.buttonHeight)
+            ) {
+                console.log(`You clicked the ${this.buttonText} button`);
+            }
+        });
+
+    }
+
+    draw() {
+        if (this.#render == false) {
+        }
+        else {
+            ctx.fillStyle = this.buttonColor;
+            ctx.fillRect(this.buttonPosX, this.buttonPosY, this.buttonWidth, this.buttonHeight);
+
+            ctx.font = "14pt Arial";
+            ctx.fillStyle = "black";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(this.buttonText, this.buttonPosX + this.buttonWidth / 2, this.buttonPosY + this.buttonHeight / 2);
+        }
+    }
+
+    renderON() {
+        this.#render = true;
+    }
+
+    renderOFF() {
+        this.#render = false;
+    }
+}
+
 // Intro/Start slides Class
 class Intro {
     constructor() {
@@ -570,6 +645,9 @@ class Intro {
 
         this.startButtonPosX = 300.0;
         this.startButtonPosY = 300.0;
+
+        //Selection Tracker
+        this.titlePageSelection = false;
 
     }
 
@@ -615,10 +693,10 @@ class Intro {
                 (event.clientY - rect.top) <= (this.startButtonPosY + this.buttonHeight)
             ) {
                 console.log("You clicked the start button");
-                //game = new Game();
-                //game.run();
+                this.titlePageSelection = true;
+                return GameStates[6];
             }
-      });
+        });
     }
 
     drawInfoButton() {
@@ -642,7 +720,9 @@ class Intro {
                 (event.clientY - rect.top) <= (this.infoButtonPosY + this.buttonHeight)
             ) {
                 console.log("You clicked the info button");
-                //this.clickHandler();
+                this.titlePageSelection = true;
+                return GameStates[1];
+                
             }
       });
     }
@@ -654,9 +734,28 @@ class Intro {
     clear() {
 
     }
-}
 
-// Dropoff Class
+    run() {
+        this.drawText();
+
+        const resultInfo = this.drawInfoButton();
+        const resultStart = this.drawStartButton();
+        
+        if (resultInfo !== undefined) {
+            return resultInfo;
+        }
+
+        if (resultStart !== undefined) {
+            return resultStart;
+        }
+
+
+    }
+
+    cleanUp() {
+
+    }
+}
 
 
 
@@ -730,16 +829,8 @@ window.onload = function(){     //JS will wait for the entier page to load inclu
     // 5. scale the context by the pixel ratio
     ctx.scale(ratio, ratio);
 
-    // 6. Display title slide
-    title = new Intro();
-    title.drawText();
-    title.drawStartButton();
-    title.drawInfoButton();
-
-    // 6.5. Step through instructions if user has elected to see them.
-
-    // 7. Start the Game. This part is commented out while I work on the intro and title slides.
-    //game = new Game();
-    //game.run();
+    // 6. Run the game
+    game = new Game();
+    game.run();
 
 }
