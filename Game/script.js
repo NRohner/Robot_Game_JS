@@ -3,10 +3,12 @@
 // Game Variables
 let gameAnimation;
 let game;
+let score = 0;
+let highScore = 0;
 
 // Global State Variables
 let GameStates = ['title', 'info1', 'info2', 'info3', 'info4', 'info5', 'game', 'gameover'];     // List of all possible game states
-
+let pause = true;
 // Global Constants:
 
 const primaryArmMass = 1;
@@ -118,13 +120,38 @@ function convertRobotCoord_2_CanvasCoord(point) {
     return canvasCoords;
 }
 
+function generatePayloadPosition() {
+
+}
+
+// Funciton to reset the score after a game over
+function resetScore() {
+    if (score > highScore) {
+        highScore = score;
+    }
+    score = 0;
+}
+
+// How to play popup handling functions 
+function showHowToPlayPopup() {
+    document.getElementById("howToPlayPopup").style.display = "block";
+  }
+  
+  // Function to close the popup
+  function closePopup() {
+    document.getElementById("howToPlayPopup").style.display = "none";
+    pause = false;
+  }
+
 // Game class - Overarching class that runs the entire game
 class Game {
     #drawList
     constructor() {
         this.Robot = new Robot;
-        this.Payload = new Payload(1, 25, 25, 250, 300);
-        this.#drawList = [this.Robot, this.Payload];
+        this.Payload = new Payload(1, 25, 25, 250, 360);
+        this.DropOff = new DropOff(250, 275);
+        this.scoreCounter = new ScoreCounter();
+        this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff];
         this.lastFrameTime = 0;
         this.timer = 0;
 
@@ -139,8 +166,16 @@ class Game {
             // Looping through all the items in draw list
             for (var element of this.#drawList) {
                 element.draw();
-                element.updatePos();
+                if (!pause) {   // Only update the positions when the game isnt paused.
+                    element.updatePos();
+                }
             }
+
+            this.eventChecker();
+
+            // If statement to control payload reset. It only triggers if the payload goes out of bounds. The effect of this is the score resets and the payload resets to a new random position within the grab range of the robot.
+            // The payload dropoff point also resets to a new position
+
         } else {
             this.timer += frameTime;
         }
@@ -149,19 +184,72 @@ class Game {
 
     }
 
-    #intro() {
+    eventChecker() {
+        // Function to check for game over and successfull pick and place.
 
+        // Chekcing for out of bounds
+        let leftBoundry = 0;
+        let rightBoundry = 500;
+        let bottomBoundry = 400;
+
+
+        if (this.Payload.posX < leftBoundry) {
+            // Game Over
+            console.log("You went too far to the left.");
+            resetScore();
+            this.Payload.reset(1, 25, 25, 250, 360);
+            this.DropOff.reset(250, 275);
+        }
+        if (this.Payload.posX > rightBoundry) {
+            // Game Over
+            console.log("You went too far to the right.");
+            resetScore();
+            this.Payload.reset(1, 25, 25, 250, 360);
+            this.DropOff.reset(250, 275);
+        }
+        if (this.Payload.posY > bottomBoundry) {
+            // Game Over
+            console.log("You went too far to the bottom.");
+            resetScore();
+            this.Payload.reset(1, 25, 25, 250, 360);
+            this.DropOff.reset(250, 275);
+        }
+
+
+        // Checking for land on platform
+        let dropOffLeftBound = this.DropOff.posX - (this.DropOff.length / 2);
+        let dropOffRightBound = this.DropOff.posX + (this.DropOff.length / 2);
+        let dropOffTopBound = this.DropOff.posY - (this.DropOff.thickness / 2);
+        
+        //console.log(this.Payload.isGrabbed == false);
+        //console.log(this.Payload.posX > dropOffLeftBound);
+        //console.log(this.Payload.posX < dropOffRightBound);
+        //console.log((this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound);
+        //console.log((this.Payload.posY + this.Payload.sizeY) > (dropOffTopBound + 5));
+
+        if (this.Payload.posX > dropOffLeftBound &&
+            this.Payload.posX < dropOffRightBound &&
+            (this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound &&
+            (this.Payload.posY + this.Payload.sizeY) > (dropOffTopBound + 5)) { 
+
+                console.log("Payload Placed")
+                this.Payload.onDropOff = true;
+                score = score + 1;
+
+        }
     }
 
     grabAttempt(){
         console.log("grab attempt")
         let gripperPosC = convertRobotCoord_2_CanvasCoord(this.Robot.RightSecondaryArm.pos2)
-        let payloadPosC = this.Payload.topCenter
+        let payloadPosC = [this.Payload.posX, this.Payload.posY];
         let distanceToPayloadHandle = Math.sqrt(((payloadPosC[0] - gripperPosC[0]) ** 2) + ((payloadPosC[1] - gripperPosC[1]) ** 2))
 
         if (distanceToPayloadHandle > 20) {     // If the gripper is further than 20px from the handle, it wont pick it up
+            console.log(`Too Far from payload: ${distanceToPayloadHandle}`)
 
         } else {        // Else if the gripper is within 20px the paylod is picked up
+            console.log("Successfull Grab")
             this.Payload.isGrabbed = true;
         }
 
@@ -207,9 +295,6 @@ class Robot {
         this.secondaryArmLineWidth = 3;
         this.motorCoverRadius = 10;
         this.secondaryJointRadius = 4;
-
-        // Render Variable
-        this.#render = true;
 
     }
     
@@ -436,17 +521,9 @@ class Robot {
         this.RightSecondaryArm.pos2 = findArcIntersect(this.RightPrimaryArm, this.LeftPrimaryArm);
         this.LeftSecondaryArm.pos2 = this.RightSecondaryArm.pos2;
         gripperPosition = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos2);
+        //console.log(gripperPosition);
 
     }
-
-    renderON() {
-        this.#render = true;
-    }
-
-    renderOFF() {
-        this.#render = false;
-    }
-
 
 }
 
@@ -489,8 +566,13 @@ class Payload {
         this.mass = mass;
         this.sizeX = sizeX;
         this.sizeY = sizeY;
-        this.posX = posX;   // the x coordinate of the location of the payload. Measured from the top left corner of the rectangel in canvas coords
-        this.posY = posY;   // the y coordinate in canvas coords
+        this.posX = posX;   // the x coordinate of the top center location of the payload in canvas coordinates
+        this.posY = posY;   // the y coordinate of the top center location of the payload in canvas coordinates
+
+        // Plot coordinates of the payload
+        this.plotPosX = this.posX - (this.sizeX / 2);
+        this.plotPosY = this.posY;
+
         this.topCenter = [this.posX + (this.sizeX / 2), this.posY];
         this.isGrabbed = false;
         this.atStartPosition = true;
@@ -501,15 +583,17 @@ class Payload {
         this.previousPosY = 0;
 
         this.payloadFillStyle = '#B4EDD2';
+
+        this.onDropOff = false;
     }
 
     draw(){
         ctx.beginPath();
         ctx.strokeStyle = 'black';
         ctx.fillStyle = this.payloadFillStyle;
-        ctx.lineWidth = 10;
-        ctx.strokeRect(this.posX, this.posY, this.sizeX, this.sizeY);
-        ctx.fillRect(this.posX, this.posY, this.sizeX, this.sizeY);
+        ctx.lineWidth = 5;
+        ctx.strokeRect(this.plotPosX, this.plotPosY, this.sizeX, this.sizeY);
+        ctx.fillRect(this.plotPosX, this.plotPosY, this.sizeX, this.sizeY);
         ctx.stroke();
 
     }
@@ -517,30 +601,64 @@ class Payload {
     updatePos(){
         if (this.isGrabbed == true) {   // Movement instructions for when the payload is grabbed
             // Storing the previous position. We will need this for the velocity calculation
-            this.previousPosX = this.posX;
-            this.previousPosY = this.posY;
+            this.previousPosX = this.plotPosX;
+            this.previousPosY = this.plotPosY;
 
             // Updating our current X and Y position
-            this.posX = gripperPosition[0] - (this.sizeX / 2);
+            this.posX = gripperPosition[0];
             this.posY = gripperPosition[1];
+
+            // Updating the X and Y plot coordinate
+            this.plotPosX = this.posX - (this.sizeX / 2);
+            this.plotPosY = this.posY;
 
             // Calculating our X and Y velocity
             //this.previousYVel = this.velY;
-            this.velX = (this.posX - this.previousPosX) / deltaT;
-            this.velY = (this.posY - this.previousPosY) / deltaT;
+            this.velX = (this.plotPosX - this.previousPosX) / deltaT;
+            this.velY = (this.plotPosY - this.previousPosY) / deltaT;
 
+        } else if (this.onDropOff == true) {
+            // Just dont update the position if 
+            this.posX = this.posX;
+            this.posY = this.posY;
+            this.plotPosX = this.plotPosX;
+            this.plotPosY = this.plotPosY;
         } else if (this.isGrabbed == false && this.atStartPosition == false) {  // Movement instructions for falling payload
-            this.posX = this.posX + (this.velX * deltaT);   // X velocity does not change once the payload is dropped.
+            this.plotPosX = this.plotPosX + (this.velX * deltaT);   // X velocity does not change once the payload is dropped.
             
             // Handling the Y components of velocity and position
             this.velY = this.velY + 50;
-            this.posY = this.posY + (this.velY * deltaT);
+            this.plotPosY = this.plotPosY + (this.velY * deltaT);
 
-            console.log(this.velY);
-            console.log(this.posY);
+            this.posX = this.plotPosX + (this.sizeX / 2);
+            this.posY = this.plotPosY;
+
+            //console.log(this.velY);
+            //console.log(this.posY);
         }
 
 
+    }
+
+    reset(mass, sizeX, sizeY, posX, posY) {
+        this.mass = mass;
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.posX = posX;   // the x coordinate of the location of the payload. Measured from the top left corner of the rectangel in canvas coords
+        this.posY = posY;   // the y coordinate in canvas coords
+        this.topCenter = [this.posX + (this.sizeX / 2), this.posY];
+        this.isGrabbed = false;
+        this.atStartPosition = true;
+        this.velX = 0;
+        this.velY = 0;
+        this.previousYVel = 0;
+        this.previousPosX = 0;
+        this.previousPosY = 0;
+        this.onDropOff = false;
+
+        // Plot coordinates of the payload
+        this.plotPosX = this.posX - (this.sizeX / 2);
+        this.plotPosY = this.posY;
     }
 
     grabAttempt(){
@@ -554,210 +672,56 @@ class Payload {
 
 
 // Dropoff Class
-
-
-// Button Class
-class Button {
-    #render
-    constructor(text, id, xPos, yPos, width, height, color) {
-        this.buttonText = text;
-        this.buttonColor = color;
-        this.buttonPosX = xPos;
-        this.buttonPosY = yPos;
-        this.buttonWidth = width;
-        this.buttonHeight = height;
-        this.buttonID = id;
-
-        this.#render = true;
-
-        // Click Listener
-        canvas.addEventListener("click", (event) => {
-            let rect = canvas.getBoundingClientRect();
-
-            if (
-                (event.clientX - rect.left) >= this.buttonPosX &&
-                (event.clientX - rect.left) <= (this.buttonPosX + this.buttonWidth) &&
-                (event.clientY - rect.top) >= this.buttonPosY &&
-                (event.clientY - rect.top) <= (this.buttonPosY + this.buttonHeight)
-            ) {
-                console.log(`You clicked the ${this.buttonText} button`);
-            }
-        });
+class DropOff {
+    constructor(posX, posY) {
+        this.length = 50;
+        this.thickness = 10;
+        this.posX = posX;   // X position of the center of the platform
+        this.posY = posY;   // Y position of the center of the platform
+        this.style = '#DDBEA8'; // Color of the dropoff zones
 
     }
 
     draw() {
-        if (this.#render == false) {
-        }
-        else {
-            ctx.fillStyle = this.buttonColor;
-            ctx.fillRect(this.buttonPosX, this.buttonPosY, this.buttonWidth, this.buttonHeight);
-
-            ctx.font = "14pt Arial";
-            ctx.fillStyle = "black";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(this.buttonText, this.buttonPosX + this.buttonWidth / 2, this.buttonPosY + this.buttonHeight / 2);
-        }
+        ctx.beginPath();
+        ctx.strokeStyle = 'black';
+        ctx.fillStyle = this.style;
+        ctx.lineWidth = 5;
+        ctx.strokeRect(this.posX - (this.length / 2), this.posY - (this.thickness / 2), this.length, this.thickness);
+        ctx.fillRect(this.posX - (this.length / 2), this.posY - (this.thickness / 2), this.length, this.thickness);
+        ctx.stroke();
     }
 
-    renderON() {
-        this.#render = true;
-    }
+    updatePos() {}
 
-    renderOFF() {
-        this.#render = false;
+    reset(posX, posY) {
+        this.posX = posX;
+        this.posY = posY;
     }
 }
 
-// Intro/Start slides Class
-class Intro {
+// Score Counter Class
+class ScoreCounter {
     constructor() {
-        // Title Font Properties
-        this.titleFontSize = 60;
-        this.titleFontFamily = 'Helvetica';
-        this.titleFontStyle = 'normal';
-        this.titleText = "Pick & Place";
-        this.titlePosX = 0;
-        this.titlePosY = 0;
-
-        // Sub Title Font Propertis
-        this.subtitleFontSize = 10;
-        this.subtitleFontFamily = 'Helvetica';
-        this.subtitleFontStyle = 'oblique';
-        this.subtitleText = 'By Nick Rohner';
-        this.subtitlePosX = 0;
-        this.subtitlePosY = 0;
-
-        // General Button Propertis
-        this.buttonWidth = 150.0;
-        this.buttonHeight = 50.0;
-
-        // Info Button Properties
-        this.infoButtonText = 'Instructions';
-        this.infoButtonColor = '#B4EDD2';
-        this.infoButtonPosX = 50;
-        this.infoButtonPosY = 300;
-
-        // Start Button Properties
-        this.startButtonText = 'Start'
-        this.startButtonColor = '#B4EDD2';
-
-        this.startButtonPosX = 300.0;
-        this.startButtonPosY = 300.0;
-
-        //Selection Tracker
-        this.titlePageSelection = false;
-
+        this.scoreFontSize = 16;
+        this.scoreFontFamily = 'Helvetica';
+        this.scoreFontStyle = 'normal';
+        this.scoreText = `Score: ${score}`;
+        this.scorePosX = 10;
+        this.scorePosY = 20;
     }
 
-    drawText() {
-        // Drawing the main title
-        ctx.font = this.titleFontStyle + ' ' + this.titleFontSize + 'pt ' + this.titleFontFamily;
+    draw() {
+        // Drawing the score
+        ctx.font = this.scoreFontStyle + ' ' + this.scoreFontSize + 'pt ' + this.scoreFontFamily;
         ctx.fillStyle = '#000'; // Text color
-        let textWidth = ctx.measureText(this.titleText).width;
-        this.titlePosX = (500 / 2) - (textWidth / 2);      // Centered horizontally
-        this.titlePosY = 100; // Centered vertically
-
-        ctx.fillText(this.titleText, this.titlePosX, this.titlePosY);
-
-        // Drawing the subtitle
-        ctx.font = this.subtitleFontStyle + ' ' + this.subtitleFontSize + 'pt ' + this.subtitleFontFamily;
-        ctx.fillStyle = '#000'; // Different Text color for subtitle (e.g., red)
-        textWidth = ctx.measureText(this.subtitleText).width;
-        this.subtitlePosX = this.titlePosX;      // Centered horizontally
-        this.subtitlePosY = 130; // Centered vertically
-
-        ctx.fillText(this.subtitleText, this.subtitlePosX, this.subtitlePosY);
-    
+        ctx.fillText(this.scoreText, this.scorePosX, this.scorePosY);
+        this.scoreText = `Score: ${score}`;
     }
 
-    drawStartButton() {
-        ctx.fillStyle = this.startButtonColor;
-        ctx.fillRect(this.startButtonPosX, this.startButtonPosY, this.buttonWidth, this.buttonHeight);
-
-        ctx.font = "14pt Arial";
-        ctx.fillStyle = "black";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.startButtonText, this.startButtonPosX + this.buttonWidth / 2, this.startButtonPosY + this.buttonHeight / 2);
-
-        // Add click event listener to the button
-        canvas.addEventListener("click", (event) => {
-            let rect = canvas.getBoundingClientRect();
-
-            if (
-                (event.clientX - rect.left) >= this.startButtonPosX &&
-                (event.clientX - rect.left) <= (this.startButtonPosX + this.buttonWidth) &&
-                (event.clientY - rect.top) >= this.startButtonPosY &&
-                (event.clientY - rect.top) <= (this.startButtonPosY + this.buttonHeight)
-            ) {
-                console.log("You clicked the start button");
-                this.titlePageSelection = true;
-                return GameStates[6];
-            }
-        });
-    }
-
-    drawInfoButton() {
-        ctx.fillStyle = this.infoButtonColor;
-        ctx.fillRect(this.infoButtonPosX, this.infoButtonPosY, this.buttonWidth, this.buttonHeight);
-
-        ctx.font = "14pt Arial";
-        ctx.fillStyle = "black";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.infoButtonText, this.infoButtonPosX + this.buttonWidth / 2, this.infoButtonPosY + this.buttonHeight / 2);
-
-        // Add click event listener to the button
-        canvas.addEventListener("click", (event) => {
-            let rect = canvas.getBoundingClientRect();
-
-            if (
-                (event.clientX - rect.left) >= this.infoButtonPosX &&
-                (event.clientX - rect.left) <= (this.infoButtonPosX + this.buttonWidth) &&
-                (event.clientY - rect.top) >= this.infoButtonPosY &&
-                (event.clientY - rect.top) <= (this.infoButtonPosY + this.buttonHeight)
-            ) {
-                console.log("You clicked the info button");
-                this.titlePageSelection = true;
-                return GameStates[1];
-                
-            }
-      });
-    }
-
-    clickHandler(){
-        console.log('You clicked the button!');
-    }
-
-    clear() {
-
-    }
-
-    run() {
-        this.drawText();
-
-        const resultInfo = this.drawInfoButton();
-        const resultStart = this.drawStartButton();
-        
-        if (resultInfo !== undefined) {
-            return resultInfo;
-        }
-
-        if (resultStart !== undefined) {
-            return resultStart;
-        }
-
-
-    }
-
-    cleanUp() {
-
+    updatePos() {
     }
 }
-
-
 
 // Event Listeners
 // Event listener for right arrow key
@@ -789,20 +753,24 @@ window.addEventListener("keyup", function (event) {
 });
 
 // Event listener for space bar keypress - different from keydown or keyup
-window.addEventListener("keypress" , function(event){
-    if (game.Payload.isGrabbed == false) {
-    game.grabAttempt();
-    } else {
+window.addEventListener("keydown" , function(event){
+    if ((event.key === "Space" || event.key === " ") && game.Payload.isGrabbed == true) {
+        console.log('release grab')
         game.releaseGrab();
-    }
-    if (event.key === "Space" && isSpaceKeyPressed == false) {
-        isSpaceKeyPressed = true;
-    } else if (event.key ==="Space" && isSpaceKeyPressed == true) {
-        isSpaceKeyPressed = false;
+    } else if ((event.key === "Space" || event.key === " ") && game.Payload.isGrabbed == false) {
+        console.log('grab attempt')
+        game.grabAttempt();
     }
 });
 
-// Event listener for space bar keyup
+// Maybe remove this for the release version of the game.
+// Event listener for p key (pause)
+window.addEventListener("keydown" , function(event){
+    if (event.key === "p") {
+        pause = !pause;
+        console.log("Pause Button");
+    }
+});
 
 // Testing
 
@@ -829,7 +797,9 @@ window.onload = function(){     //JS will wait for the entier page to load inclu
     // 5. scale the context by the pixel ratio
     ctx.scale(ratio, ratio);
 
-    // 6. Run the game
+    // 6. Display how to play popup
+    showHowToPlayPopup()
+    // 7. Run game 
     game = new Game();
     game.run();
 

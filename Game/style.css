@@ -10,3 +10,36 @@ canvas {
     border: 1px solid #000;
     background-color: #83B5D1;
 }
+
+.popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.7);
+    padding: 15px; /* Adjust padding for spacing inside the popup */
+    border-radius: 20px; /* Make the corners rounded */
+    width: 400px; /* Set the maximum width of the popup */
+    height: 350px; /* Set the maximum height of the popup */
+    overflow: auto; /* Add scrollbars if the content exceeds the maximum height */
+    font-family: 'Helvetica', sans-serif; /* Set the font to Helvetica */
+}
+  
+.popup-content {
+    background: white;
+    padding: 30px; /* Adjust padding for more space inside the popup */
+    border-radius: 20px; /* Make the corners rounded */
+    width: 370px; /* Set the maximum width of the popup */
+    height: 290px; /* Set the maximum height of the popup */
+    overflow: auto; /* Add scrollbars if the content exceeds the maximum height */
+    font-family: 'Helvetica', sans-serif; /* Set the font to Helvetica */
+}
+  
+.close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+    cursor: pointer;
+}
