@@ -187,10 +187,10 @@ class Game {
     eventChecker() {
         // Function to check for game over and successfull pick and place.
 
-        // Chekcing for out of bounds
-        let leftBoundry = 0;
-        let rightBoundry = 500;
-        let bottomBoundry = 400;
+        // Chekcing for out of bounds. We make the window oversized to give some time between throwing it out to respawn
+        let leftBoundry = 0 - 800;
+        let rightBoundry = 500 + 800;
+        let bottomBoundry = 400 + 800;
 
 
         if (this.Payload.posX < leftBoundry) {
@@ -222,20 +222,24 @@ class Game {
         let dropOffTopBound = this.DropOff.posY - (this.DropOff.thickness / 2);
         
         //console.log(this.Payload.isGrabbed == false);
-        //console.log(this.Payload.posX > dropOffLeftBound);
-        //console.log(this.Payload.posX < dropOffRightBound);
-        //console.log((this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound);
-        //console.log((this.Payload.posY + this.Payload.sizeY) > (dropOffTopBound + 5));
+        // Seems to be working correctly - console.log(this.Payload.posX > dropOffLeftBound);
+        // Working - console.log(this.Payload.posX < dropOffRightBound);
+        //Seems to be working correctly - console.log((this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound);
+        //console.log((this.Payload.posY - this.Payload.sizeY) > (dropOffTopBound + 5));
 
-        if (this.Payload.posX > dropOffLeftBound &&
-            this.Payload.posX < dropOffRightBound &&
-            (this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound &&
-            (this.Payload.posY + this.Payload.sizeY) > (dropOffTopBound + 5)) { 
+        if (this.Payload.isGrabbed == false &&          // Payload is released
+            this.Payload.posX > dropOffLeftBound &&     // within the left bound of the dropoff
+            this.Payload.posX < dropOffRightBound &&    // within the right bound of the dropoff
+            (this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound &&      // Bottom of the payload above top of the platform
+            (this.Payload.posY + this.Payload.sizeY) >= (dropOffTopBound - 10))    // Bottom of the payload only a few pxles above the top of the platform
+            { 
 
                 console.log("Payload Placed")
                 this.Payload.onDropOff = true;
                 score = score + 1;
 
+        } else {
+            this.Payload.onDropOff = false;
         }
     }
 
