@@ -5,6 +5,9 @@ let gameAnimation;
 let game;
 let score = 0;
 let highScore = 0;
+let payloadRestingPosY = 0;     // This is the resting y coordinate for the payload if it is placed on the payload
+let payloadHeight = 25;
+let payloadWidth = 25;
 
 // Global State Variables
 let GameStates = ['title', 'info1', 'info2', 'info3', 'info4', 'info5', 'game', 'gameover'];     // List of all possible game states
@@ -36,6 +39,19 @@ const minThetaL = 1.480039;
 const maxThetaR = 1.661553;
 const maxThetaL = Math.PI + 0.523599;
 const motorTorque = 800;
+
+// Calculated constant robot variables based on the input variables
+// See one note diagrams for definition of points. I will try to save screenshots or a pdf of these to the game directory.
+// NOTE - All of these values are in robot coordinates. They will need to be converted to canvas coordinates before drawing.
+var L1x = -motorOffset + primaryArmLength * Math.cos(maxThetaL);
+var L1y = primaryArmLength * Math.sin(maxThetaL);
+var L2x = -motorOffset + primaryArmLength * Math.cos(minThetaL);
+var L2y = primaryArmLength * Math.sin(minThetaL);
+
+var R1x = motorOffset + primaryArmLength * Math.cos(minThetaR);
+var R1y = primaryArmLength * Math.sin(minThetaR);
+var R2x = motorOffset + primaryArmLength * Math.cos(maxThetaR);
+var R2y = primaryArmLength * Math.sin(maxThetaR);
 
 
 // Initial angle for the right and left arms.
@@ -120,7 +136,7 @@ function convertRobotCoord_2_CanvasCoord(point) {
     return canvasCoords;
 }
 
-function generatePayloadPosition() {
+function generateReachablePosition() {  // Generates a random position within the robots working area (range it can reach)
 
 }
 
@@ -148,12 +164,14 @@ class Game {
     #drawList
     constructor() {
         this.Robot = new Robot;
-        this.Payload = new Payload(1, 25, 25, 250, 360);
+        this.Payload = new Payload(1, payloadWidth, payloadHeight, 250, 360);
         this.DropOff = new DropOff(250, 275);
+        this.DropOff.reset(250, 275);   // Immediately re-setting it so we lock in the correct resting Y position for the payload if it lands on the platform.
         this.scoreCounter = new ScoreCounter();
         this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff];
         this.lastFrameTime = 0;
         this.timer = 0;
+        this.payloadDropOffCounter = 0;
 
     }
 
@@ -195,21 +213,18 @@ class Game {
 
         if (this.Payload.posX < leftBoundry) {
             // Game Over
-            console.log("You went too far to the left.");
             resetScore();
             this.Payload.reset(1, 25, 25, 250, 360);
             this.DropOff.reset(250, 275);
         }
         if (this.Payload.posX > rightBoundry) {
             // Game Over
-            console.log("You went too far to the right.");
             resetScore();
             this.Payload.reset(1, 25, 25, 250, 360);
             this.DropOff.reset(250, 275);
         }
         if (this.Payload.posY > bottomBoundry) {
             // Game Over
-            console.log("You went too far to the bottom.");
             resetScore();
             this.Payload.reset(1, 25, 25, 250, 360);
             this.DropOff.reset(250, 275);
@@ -220,12 +235,9 @@ class Game {
         let dropOffLeftBound = this.DropOff.posX - (this.DropOff.length / 2);
         let dropOffRightBound = this.DropOff.posX + (this.DropOff.length / 2);
         let dropOffTopBound = this.DropOff.posY - (this.DropOff.thickness / 2);
-        
-        //console.log(this.Payload.isGrabbed == false);
-        // Seems to be working correctly - console.log(this.Payload.posX > dropOffLeftBound);
-        // Working - console.log(this.Payload.posX < dropOffRightBound);
-        //Seems to be working correctly - console.log((this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound);
-        //console.log((this.Payload.posY - this.Payload.sizeY) > (dropOffTopBound + 5));
+
+        // Creating a counter to see how long the payload is on the platform for. If it has been on the platform for
+        // 1 second, then the score goes up by 1 and the payload and dropoff positions reset.
 
         if (this.Payload.isGrabbed == false &&          // Payload is released
             this.Payload.posX > dropOffLeftBound &&     // within the left bound of the dropoff
@@ -234,9 +246,15 @@ class Game {
             (this.Payload.posY + this.Payload.sizeY) >= (dropOffTopBound - 10))    // Bottom of the payload only a few pxles above the top of the platform
             { 
 
-                console.log("Payload Placed")
                 this.Payload.onDropOff = true;
-                score = score + 1;
+                this.payloadDropOffCounter++;
+
+                if (this.payloadDropOffCounter > 30) {   //30 frames = 0.5 second at 60fps
+                    score = score + 1;
+                    this.Payload.reset(1, payloadWidth, payloadHeight, 250, 360);   // Eventually these will need to be dynamic position values.
+                    this.DropOff.reset(250, 275);   // Will need to be dynamnic values in the future.
+                    this.payloadDropOffCounter = 0;
+                }
 
         } else {
             this.Payload.onDropOff = false;
@@ -244,16 +262,14 @@ class Game {
     }
 
     grabAttempt(){
-        console.log("grab attempt")
         let gripperPosC = convertRobotCoord_2_CanvasCoord(this.Robot.RightSecondaryArm.pos2)
         let payloadPosC = [this.Payload.posX, this.Payload.posY];
         let distanceToPayloadHandle = Math.sqrt(((payloadPosC[0] - gripperPosC[0]) ** 2) + ((payloadPosC[1] - gripperPosC[1]) ** 2))
 
         if (distanceToPayloadHandle > 20) {     // If the gripper is further than 20px from the handle, it wont pick it up
-            console.log(`Too Far from payload: ${distanceToPayloadHandle}`)
+            //console.log(`Too Far from payload: ${distanceToPayloadHandle}`)
 
         } else {        // Else if the gripper is within 20px the paylod is picked up
-            console.log("Successfull Grab")
             this.Payload.isGrabbed = true;
         }
 
@@ -525,7 +541,7 @@ class Robot {
         this.RightSecondaryArm.pos2 = findArcIntersect(this.RightPrimaryArm, this.LeftPrimaryArm);
         this.LeftSecondaryArm.pos2 = this.RightSecondaryArm.pos2;
         gripperPosition = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos2);
-        //console.log(gripperPosition);
+
 
     }
 
@@ -624,9 +640,20 @@ class Payload {
         } else if (this.onDropOff == true) {
             // Just dont update the position if 
             this.posX = this.posX;
-            this.posY = this.posY;
+            this.posY = payloadRestingPosY + (this.sizeY / 2);
             this.plotPosX = this.plotPosX;
-            this.plotPosY = this.plotPosY;
+            this.plotPosY = payloadRestingPosY - 1;
+            this.velY = 0;
+            this.previousYVel = 0;
+
+            // Slowly reducing the x velocity (friction)
+            if (this.velX > 0.5) {
+                this.velX = this.velX * 0.95;
+
+            } else {
+                this.velX = 0;
+            }
+
         } else if (this.isGrabbed == false && this.atStartPosition == false) {  // Movement instructions for falling payload
             this.plotPosX = this.plotPosX + (this.velX * deltaT);   // X velocity does not change once the payload is dropped.
             
@@ -637,8 +664,6 @@ class Payload {
             this.posX = this.plotPosX + (this.sizeX / 2);
             this.posY = this.plotPosY;
 
-            //console.log(this.velY);
-            //console.log(this.posY);
         }
 
 
@@ -701,6 +726,7 @@ class DropOff {
     reset(posX, posY) {
         this.posX = posX;
         this.posY = posY;
+        payloadRestingPosY = this.posY - (this.thickness / 2) - payloadHeight;
     }
 }
 
@@ -759,24 +785,12 @@ window.addEventListener("keyup", function (event) {
 // Event listener for space bar keypress - different from keydown or keyup
 window.addEventListener("keydown" , function(event){
     if ((event.key === "Space" || event.key === " ") && game.Payload.isGrabbed == true) {
-        console.log('release grab')
         game.releaseGrab();
     } else if ((event.key === "Space" || event.key === " ") && game.Payload.isGrabbed == false) {
-        console.log('grab attempt')
         game.grabAttempt();
     }
 });
 
-// Maybe remove this for the release version of the game.
-// Event listener for p key (pause)
-window.addEventListener("keydown" , function(event){
-    if (event.key === "p") {
-        pause = !pause;
-        console.log("Pause Button");
-    }
-});
-
-// Testing
 
 window.onload = function(){     //JS will wait for the entier page to load including all images and external content before trigging the window.onload
     canvas = document.getElementById('Canvas1');  //Creating a constant called canvas and setting it equal to the canvas1 canvas we created back in the HTML file
