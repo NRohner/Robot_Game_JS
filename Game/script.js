@@ -53,6 +53,34 @@ var R1y = primaryArmLength * Math.sin(minThetaR);
 var R2x = motorOffset + primaryArmLength * Math.cos(maxThetaR);
 var R2y = primaryArmLength * Math.sin(maxThetaR);
 
+// canvas coordinates
+var L1_canvas = convertRobotCoord_2_CanvasCoord([L1x, L1y]);
+var L2_canvas = convertRobotCoord_2_CanvasCoord([L2x, L2y]);
+var R1_canvas = convertRobotCoord_2_CanvasCoord([R1x, R1y]);
+var R2_canvas = convertRobotCoord_2_CanvasCoord([R2x, R2y]);
+
+
+// Debug Print Statements for Robot Coordinates
+    //console.log('A = L1x = ' + L1x);
+    //console.log('B = L1y = ' + L1y);
+    //console.log('C = R2x = ' + R2x);
+    //console.log('D = R2y = ' + R2y);
+    //console.log('R = secondary arm lenght = ' + secondaryArmLength);
+
+//Debug Print Statements for Canvas Coordinates
+    console.log('L1 = ' + L1_canvas);
+    console.log('L2 = ' + L2_canvas);
+    console.log('R1 = ' + R1_canvas);
+    console.log('R2 = ' + R2_canvas);
+    
+
+// Working Area Calculations - all values in robot coordinat system
+// Multiplying by 0.9 to give ourselves a little bit of a safety factor. Everything should be well within the working range in this case.
+var workingRangeLeftBound = findWorkingAreaXIntersect(L1x, L1y, R2x, R2y, secondaryArmLength) * 0.9;
+var workingRangeRightBound = -1 * workingRangeLeftBound;
+
+var test = generateReachablePosition()
+console.log(test);
 
 // Initial angle for the right and left arms.
 var thetaStartR = 0;
@@ -136,7 +164,74 @@ function convertRobotCoord_2_CanvasCoord(point) {
     return canvasCoords;
 }
 
+function findWorkingAreaXIntersect(A, B, C, D, R) {
+    // A and B are the X and Y coordinates of the center of circle 1
+    // C and D are the X and Y coordinates of the center of circle 2
+    // R is the radius (which both should be the secondary arm length)
+    X = (4 * A**3 - 4 * A**2 * C - Math.sqrt((-4 * A**3 + 4 * A**2 * C - 4 * A * B**2 + 8 * A * B * D + 4 * A * 
+        C**2 - 4 * A * D**2 - 4 * B**2 * C + 8 * B * C * D - 4 * C**3 - 4 * C * D**2)**2 - 4 * (4 * A**2 - 8 * 
+            A * C + 4 * B**2 - 8 * B * D + 4 * C**2 + 4 * D**2) * (A**4 + 2 * A**2 * B**2 - 4 * A**2 * B * D - 
+                2 * A**2 * C**2 + 2 * A**2 * D**2 + B**4 - 4 * B**3 * D + 2 * B**2 * C**2 + 6 * B**2 * D**2 - 
+                4 * B**2 * R**2 - 4 * B * C**2 * D - 4 * B * D**3 + 8 * B * D * R**2 + C**4 + 2 * C**2 * D**2 + 
+                D**4 - 4 * D**2 * R**2)) + 4 * A * B**2 - 8 * A * B * D - 4 * A * C**2 + 4 * A * D**2 + 4 * 
+                B**2 * C - 8 * B * C * D + 4 * C**3 + 4 * C * D**2)/(2 * (4 * A**2 - 8 * A * C + 4 * B**2 - 8 * 
+                    B * D + 4 * C**2 + 4 * D**2));
+
+    return X;
+}
+
+function randomSign() {     // Returns either 1 or -1 randomly
+    // Generate a random number between 0 (inclusive) and 1 (exclusive)
+    const randomValue = Math.random();
+  
+    // Return 1 if the random value is greater than or equal to 0.5, otherwise return -1
+    return randomValue >= 0.5 ? 1 : -1;
+}
+
+
 function generateReachablePosition() {  // Generates a random position within the robots working area (range it can reach)
+    // PROBLEMS:
+    // Sometimes the Y coordinate will be invalid "NaN"
+        // It seems like it is always the yLowerLimit that is causing this.
+
+
+    // This function works in a few specific steps
+    // 1. Generate a random value between the left working range limit and 0
+    // 2. Calculate the upper and lower Y limit for the working range at that X location (with a 0.9 saftey factor multiplier)
+    // 3. Generate a random Y value between those two bounds
+    // 4. Randomly multiply the X value by 1 or -1. This way the position could be on either the left or right side of the working range.
+    // 5. Convert X and Y values from robot coordinates to canvas coordinates.
+
+    // 1. Generate a random value between left working range limit and 0
+    var xRange = (0 - workingRangeLeftBound) + 1;  // we add 1 at the end to make it inclusive
+    var random_decimal = Math.random();
+    var negXCoord = random_decimal * xRange;
+
+    // 2. Calculate upper and lower Y limits with a 0.9 multiplier
+    var yLowerLimit = 0.9 * (L1y + Math.sqrt((-1 * L1x**2) + (2 * L1x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
+    var under_the_root = (-1 * L1x**2) + (2 * L1x * negXCoord) + (secondaryArmLength**2) - negXCoord**2;
+    console.log("Under the root: " + under_the_root);
+
+
+    var yUpperLimit = 0.9 * (R2y + Math.sqrt((-1 * R2x**2) + (2 * R2x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
+
+    console.log(yLowerLimit);
+    console.log(yUpperLimit);
+
+    // 3. Generate random number between upper and lower Y bounds
+    var yRange = (yUpperLimit - yLowerLimit) + 1;
+    random_decimal = Math.random();
+    var yCoord = random_decimal * yRange;
+
+    // 4. Multiply negative X coord by a random 1 or -1
+    var xCoord = randomSign() * negXCoord;
+
+    return convertRobotCoord_2_CanvasCoord([xCoord, yCoord]);
+    
+    // 5. Convert X and Y coords to canvas coords
+    //let pointInCanvasCoords = convertRobotCoord_2_CanvasCoord([xCoord, yCoord]);
+    
+    //return pointInCanvasCoords;
 
 }
 
@@ -168,10 +263,18 @@ class Game {
         this.DropOff = new DropOff(250, 275);
         this.DropOff.reset(250, 275);   // Immediately re-setting it so we lock in the correct resting Y position for the payload if it lands on the platform.
         this.scoreCounter = new ScoreCounter();
-        this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff];
+
+        // Debugging
+        this.Debugger = new Debugger;
+
+        // Draw List
+        this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff, this.Debugger];
         this.lastFrameTime = 0;
         this.timer = 0;
         this.payloadDropOffCounter = 0;
+
+        // Debugging
+        this.Debugger = new Debugger;
 
     }
 
@@ -251,8 +354,14 @@ class Game {
 
                 if (this.payloadDropOffCounter > 30) {   //30 frames = 0.5 second at 60fps
                     score = score + 1;
-                    this.Payload.reset(1, payloadWidth, payloadHeight, 250, 360);   // Eventually these will need to be dynamic position values.
-                    this.DropOff.reset(250, 275);   // Will need to be dynamnic values in the future.
+                    let newPayloadPoint = generateReachablePosition();
+                    let newDropOffPoint = generateReachablePosition();
+
+                    console.log("New Payload Point: " + newPayloadPoint);
+                    console.log("New Dropoff Point: " + newDropOffPoint);
+
+                    this.Payload.reset(1, payloadWidth, payloadHeight, newPayloadPoint[0], newPayloadPoint[1]);   // Eventually these will need to be dynamic position values.
+                    this.DropOff.reset(newDropOffPoint[0], newDropOffPoint[1]);   // Will need to be dynamnic values in the future.
                     this.payloadDropOffCounter = 0;
                 }
 
@@ -289,6 +398,40 @@ class Game {
 
 }
 
+// Debugger Class
+class Debugger {
+    constructor() {
+
+
+    }
+    drawCircle(x, y, radius, color) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = color; // Color of the circle
+        ctx.lineWidth = 6; // Thickness of the line
+        ctx.stroke();
+    }
+
+    draw() {
+        // Drawing L1 - Red
+        this.drawCircle(L1_canvas[0], L1_canvas[1], secondaryArmLength, "red");
+
+        // Drawing L2 - Green
+        this.drawCircle(L2_canvas[0], L2_canvas[1], secondaryArmLength, "green");
+
+        // Drawing L3 - Blue
+        this.drawCircle(R1_canvas[0], R1_canvas[1], secondaryArmLength, "blue");
+
+        // Drawing L4 - Yellow
+        this.drawCircle(R2_canvas[0], R2_canvas[1], secondaryArmLength, "yellow");
+
+    }
+
+    updatePos() { 
+
+    }
+
+}
 
 // Robot Class
 class Robot {
