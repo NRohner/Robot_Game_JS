@@ -21,13 +21,9 @@ const secondaryArmI = 1;
 
 // Physics Constants and Variables:
 const g = 9.81;    // Acceleration due to gravity
-<<<<<<< HEAD
-const deltaT = 0.003;        
-const frameTime = 1000/60;    //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
-=======
 const deltaT = 0.0025        
 const frameTime = 1000/60    //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
->>>>>>> Dev
+
 
 // Canvas Constants:
 
@@ -930,10 +926,8 @@ window.addEventListener("keydown" , function(event){
 });
 
 
-<<<<<<< HEAD
 // Actual running of the game
-=======
->>>>>>> Dev
+
 window.onload = function(){     //JS will wait for the entier page to load including all images and external content before trigging the window.onload
     canvas = document.getElementById('Canvas1');  //Creating a constant called canvas and setting it equal to the canvas1 canvas we created back in the HTML file
     ctx = canvas.getContext('2d');
