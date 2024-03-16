@@ -3,7 +3,15 @@
 // Game Variables
 let gameAnimation;
 let game;
+let score = 0;
+let highScore = 0;
+let payloadRestingPosY = 0;     // This is the resting y coordinate for the payload if it is placed on the payload
+let payloadHeight = 25;
+let payloadWidth = 25;
 
+// Global State Variables
+let GameStates = ['title', 'info1', 'info2', 'info3', 'info4', 'info5', 'game', 'gameover'];     // List of all possible game states
+let pause = true;
 // Global Constants:
 
 const primaryArmMass = 1;
@@ -13,8 +21,13 @@ const secondaryArmI = 1;
 
 // Physics Constants and Variables:
 const g = 9.81;    // Acceleration due to gravity
+<<<<<<< HEAD
 const deltaT = 0.003;        
 const frameTime = 1000/60;    //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
+=======
+const deltaT = 0.0025        
+const frameTime = 1000/60    //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
+>>>>>>> Dev
 
 // Canvas Constants:
 
@@ -32,6 +45,46 @@ const maxThetaR = 1.661553;
 const maxThetaL = Math.PI + 0.523599;
 const motorTorque = 800;
 
+// Calculated constant robot variables based on the input variables
+// See one note diagrams for definition of points. I will try to save screenshots or a pdf of these to the game directory.
+// NOTE - All of these values are in robot coordinates. They will need to be converted to canvas coordinates before drawing.
+var L1x = -motorOffset + primaryArmLength * Math.cos(maxThetaL);
+var L1y = primaryArmLength * Math.sin(maxThetaL);
+var L2x = -motorOffset + primaryArmLength * Math.cos(minThetaL);
+var L2y = primaryArmLength * Math.sin(minThetaL);
+
+var R1x = motorOffset + primaryArmLength * Math.cos(minThetaR);
+var R1y = primaryArmLength * Math.sin(minThetaR);
+var R2x = motorOffset + primaryArmLength * Math.cos(maxThetaR);
+var R2y = primaryArmLength * Math.sin(maxThetaR);
+
+// canvas coordinates
+var L1_canvas = convertRobotCoord_2_CanvasCoord([L1x, L1y]);
+var L2_canvas = convertRobotCoord_2_CanvasCoord([L2x, L2y]);
+var R1_canvas = convertRobotCoord_2_CanvasCoord([R1x, R1y]);
+var R2_canvas = convertRobotCoord_2_CanvasCoord([R2x, R2y]);
+
+
+// Debug Print Statements for Robot Coordinates
+    //console.log('A = L1x = ' + L1x);
+    //console.log('B = L1y = ' + L1y);
+    //console.log('C = R2x = ' + R2x);
+    //console.log('D = R2y = ' + R2y);
+    //console.log('R = secondary arm lenght = ' + secondaryArmLength);
+
+//Debug Print Statements for Canvas Coordinates
+    //console.log('L1 = ' + L1_canvas);
+    //console.log('L2 = ' + L2_canvas);
+    //console.log('R1 = ' + R1_canvas);
+    //console.log('R2 = ' + R2_canvas);
+    
+
+// Working Area Calculations - all values in robot coordinat system
+// Multiplying by 0.9 to give ourselves a little bit of a safety factor. Everything should be well within the working range in this case.
+var workingRangeLeftBound = findWorkingAreaXIntersect(L1x, L1y, R2x, R2y, secondaryArmLength) * 0.9;
+var workingRangeRightBound = -1 * workingRangeLeftBound;
+
+var test = generateReachablePosition()
 
 // Initial angle for the right and left arms.
 var thetaStartR = 0;
@@ -44,6 +97,7 @@ let isSpaceKeyPressed = false;
 let isRightKeyPressed = false;
 let isLeftKeyPressed = false;
 
+var gripperPosition;
 
 // Global Functions
 function findArcIntersect(primaryArmR, primaryArmL) {   // Finds the connection point for the secondary arms.
@@ -114,16 +168,111 @@ function convertRobotCoord_2_CanvasCoord(point) {
     return canvasCoords;
 }
 
+function findWorkingAreaXIntersect(A, B, C, D, R) {
+    // A and B are the X and Y coordinates of the center of circle 1
+    // C and D are the X and Y coordinates of the center of circle 2
+    // R is the radius (which both should be the secondary arm length)
+    X = (4 * A**3 - 4 * A**2 * C - Math.sqrt((-4 * A**3 + 4 * A**2 * C - 4 * A * B**2 + 8 * A * B * D + 4 * A * 
+        C**2 - 4 * A * D**2 - 4 * B**2 * C + 8 * B * C * D - 4 * C**3 - 4 * C * D**2)**2 - 4 * (4 * A**2 - 8 * 
+            A * C + 4 * B**2 - 8 * B * D + 4 * C**2 + 4 * D**2) * (A**4 + 2 * A**2 * B**2 - 4 * A**2 * B * D - 
+                2 * A**2 * C**2 + 2 * A**2 * D**2 + B**4 - 4 * B**3 * D + 2 * B**2 * C**2 + 6 * B**2 * D**2 - 
+                4 * B**2 * R**2 - 4 * B * C**2 * D - 4 * B * D**3 + 8 * B * D * R**2 + C**4 + 2 * C**2 * D**2 + 
+                D**4 - 4 * D**2 * R**2)) + 4 * A * B**2 - 8 * A * B * D - 4 * A * C**2 + 4 * A * D**2 + 4 * 
+                B**2 * C - 8 * B * C * D + 4 * C**3 + 4 * C * D**2)/(2 * (4 * A**2 - 8 * A * C + 4 * B**2 - 8 * 
+                    B * D + 4 * C**2 + 4 * D**2));
+
+    return X;
+}
+
+function randomSign() {     // Returns either 1 or -1 randomly
+    // Generate a random number between 0 (inclusive) and 1 (exclusive)
+    const randomValue = Math.random();
+  
+    // Return 1 if the random value is greater than or equal to 0.5, otherwise return -1
+    return randomValue >= 0.5 ? 1 : -1;
+}
+
+
+function generateReachablePosition() {  // Generates a random position within the robots working area (range it can reach)
+    // PROBLEMS:
+    // Sometimes the Y coordinate will be invalid "NaN"
+        // It seems like it is always the yLowerLimit that is causing this.
+
+
+    // This function works in a few specific steps
+    // 1. Generate a random value between the left working range limit and 0
+    // 2. Calculate the upper and lower Y limit for the working range at that X location (with a 0.9 saftey factor multiplier)
+    // 3. Generate a random Y value between those two bounds
+    // 4. Randomly multiply the X value by 1 or -1. This way the position could be on either the left or right side of the working range.
+    // 5. Convert X and Y values from robot coordinates to canvas coordinates.
+
+    // 1. Generate a random value between left working range limit and 0
+    var xRange = (0 - workingRangeLeftBound) + 1;  // we add 1 at the end to make it inclusive
+    var random_decimal = Math.random();
+    var negXCoord = -1 * random_decimal * xRange;
+
+    // 2. Calculate upper and lower Y limits with a 0.9 multiplier on the lower limit
+    var yLowerLimit = 1.1 * (L1y + Math.sqrt((-1 * L1x**2) + (2 * L1x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
+    var yUpperLimit = (R2y + Math.sqrt((-1 * R2x**2) + (2 * R2x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
+
+    // 3. Generate random number between upper and lower Y bounds
+    var yRange = (yUpperLimit - yLowerLimit) + 1;
+    random_decimal = Math.random();
+    var yCoord = random_decimal * yRange + (yLowerLimit);
+
+    // Checking the YUpperLimit is correct
+    //ar yCoord = yLowerLimit;
+
+    // 4. Multiply negative X coord by a random 1 or -1
+    var xCoord = randomSign() * negXCoord;
+
+    
+    
+    // 5. Convert X and Y coords to canvas coords
+    return convertRobotCoord_2_CanvasCoord([xCoord, yCoord]);
+
+}
+
+// Funciton to reset the score after a game over
+function resetScore() {
+    if (score > highScore) {
+        highScore = score;
+    }
+    score = 0;
+}
+
+// How to play popup handling functions 
+function showHowToPlayPopup() {
+    document.getElementById("howToPlayPopup").style.display = "block";
+  }
+  
+  // Function to close the popup
+  function closePopup() {
+    document.getElementById("howToPlayPopup").style.display = "none";
+    pause = false;
+  }
 
 // Game class - Overarching class that runs the entire game
 class Game {
-    #Robot
     #drawList
     constructor() {
-        this.#Robot = new Robot;
-        this.#drawList = [this.#Robot];
+        this.Robot = new Robot;
+        this.Payload = new Payload(1, payloadWidth, payloadHeight, 250, 360);
+        this.DropOff = new DropOff(250, 275);
+        this.DropOff.reset(250, 275);   // Immediately re-setting it so we lock in the correct resting Y position for the payload if it lands on the platform.
+        this.scoreCounter = new ScoreCounter();
+
+        // Debugging
+        //this.Debugger = new Debugger;
+
+        // Draw List
+        this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff];
         this.lastFrameTime = 0;
         this.timer = 0;
+        this.payloadDropOffCounter = 0;
+
+        // Debugging
+        this.Debugger = new Debugger;
 
     }
 
@@ -136,14 +285,103 @@ class Game {
             // Looping through all the items in draw list
             for (var element of this.#drawList) {
                 element.draw();
-                element.updatePos();
+                if (!pause) {   // Only update the positions when the game isnt paused.
+                    element.updatePos();
+                }
             }
+
+            this.eventChecker();
+
+            // If statement to control payload reset. It only triggers if the payload goes out of bounds. The effect of this is the score resets and the payload resets to a new random position within the grab range of the robot.
+            // The payload dropoff point also resets to a new position
+
         } else {
-            this.timer += frameTime
+            this.timer += frameTime;
         }
 
         gameAnimation = requestAnimationFrame(this.#animate.bind(this));
 
+    }
+
+    eventChecker() {
+        // Function to check for game over and successfull pick and place.
+
+        // Chekcing for out of bounds. We make the window oversized to give some time between throwing it out to respawn
+        let leftBoundry = 0 - 800;
+        let rightBoundry = 500 + 800;
+        let bottomBoundry = 400 + 800;
+
+
+        if (this.Payload.posX < leftBoundry) {
+            // Game Over
+            resetScore();
+            this.Payload.reset(1, 25, 25, 250, 360);
+            this.DropOff.reset(250, 275);
+        }
+        if (this.Payload.posX > rightBoundry) {
+            // Game Over
+            resetScore();
+            this.Payload.reset(1, 25, 25, 250, 360);
+            this.DropOff.reset(250, 275);
+        }
+        if (this.Payload.posY > bottomBoundry) {
+            // Game Over
+            resetScore();
+            this.Payload.reset(1, 25, 25, 250, 360);
+            this.DropOff.reset(250, 275);
+        }
+
+
+        // Checking for land on platform
+        let dropOffLeftBound = this.DropOff.posX - (this.DropOff.length / 2);
+        let dropOffRightBound = this.DropOff.posX + (this.DropOff.length / 2);
+        let dropOffTopBound = this.DropOff.posY - (this.DropOff.thickness / 2);
+
+        // Creating a counter to see how long the payload is on the platform for. If it has been on the platform for
+        // 1 second, then the score goes up by 1 and the payload and dropoff positions reset.
+
+        if (this.Payload.isGrabbed == false &&          // Payload is released
+            this.Payload.posX > dropOffLeftBound &&     // within the left bound of the dropoff
+            this.Payload.posX < dropOffRightBound &&    // within the right bound of the dropoff
+            (this.Payload.posY + this.Payload.sizeY) <= dropOffTopBound &&      // Bottom of the payload above top of the platform
+            (this.Payload.posY + this.Payload.sizeY) >= (dropOffTopBound - 10))    // Bottom of the payload only a few pxles above the top of the platform
+            { 
+
+                this.Payload.onDropOff = true;
+                this.payloadDropOffCounter++;
+
+                if (this.payloadDropOffCounter > 30) {   //30 frames = 0.5 second at 60fps
+                    score = score + 1;
+                    let newPayloadPoint = generateReachablePosition();
+                    let newDropOffPoint = generateReachablePosition();
+
+                    this.Payload.reset(1, payloadWidth, payloadHeight, newPayloadPoint[0], newPayloadPoint[1]);   // Eventually these will need to be dynamic position values.
+                    this.DropOff.reset(newDropOffPoint[0], newDropOffPoint[1]);   // Will need to be dynamnic values in the future.
+                    this.payloadDropOffCounter = 0;
+                }
+
+        } else {
+            this.Payload.onDropOff = false;
+        }
+    }
+
+    grabAttempt(){
+        let gripperPosC = convertRobotCoord_2_CanvasCoord(this.Robot.RightSecondaryArm.pos2)
+        let payloadPosC = [this.Payload.posX, this.Payload.posY];
+        let distanceToPayloadHandle = Math.sqrt(((payloadPosC[0] - gripperPosC[0]) ** 2) + ((payloadPosC[1] - gripperPosC[1]) ** 2))
+
+        if (distanceToPayloadHandle > 20) {     // If the gripper is further than 20px from the handle, it wont pick it up
+            //console.log(`Too Far from payload: ${distanceToPayloadHandle}`)
+
+        } else {        // Else if the gripper is within 20px the paylod is picked up
+            this.Payload.isGrabbed = true;
+        }
+
+    }
+
+    releaseGrab(){
+        this.Payload.isGrabbed = false;
+        this.Payload.atStartPosition = false;
     }
 
     run(){
@@ -155,9 +393,44 @@ class Game {
 
 }
 
+// Debugger Class
+class Debugger {
+    constructor() {
+
+
+    }
+    drawCircle(x, y, radius, color) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = color; // Color of the circle
+        ctx.lineWidth = 6; // Thickness of the line
+        ctx.stroke();
+    }
+
+    draw() {
+        // Drawing L1 - Red
+        this.drawCircle(L1_canvas[0], L1_canvas[1], secondaryArmLength, "red");
+
+        // Drawing L2 - Green
+        this.drawCircle(L2_canvas[0], L2_canvas[1], secondaryArmLength, "green");
+
+        // Drawing L3 - Blue
+        this.drawCircle(R1_canvas[0], R1_canvas[1], secondaryArmLength, "blue");
+
+        // Drawing L4 - Yellow
+        this.drawCircle(R2_canvas[0], R2_canvas[1], secondaryArmLength, "yellow");
+
+    }
+
+    updatePos() { 
+
+    }
+
+}
 
 // Robot Class
 class Robot {
+    #render
     constructor() {
         // Creating our arm objects
         this.RightPrimaryArm = new PrimaryArm(motorOffset, 0);
@@ -184,6 +457,9 @@ class Robot {
     }
     
     draw() {
+
+
+
         // Drawing the Robot Body
         let cBodyOrigin = convertRobotCoord_2_CanvasCoord([-motorOffset * 2, -motorOffset]);
         ctx.beginPath();
@@ -402,6 +678,8 @@ class Robot {
         // Updating the right secondary arm positions
         this.RightSecondaryArm.pos2 = findArcIntersect(this.RightPrimaryArm, this.LeftPrimaryArm);
         this.LeftSecondaryArm.pos2 = this.RightSecondaryArm.pos2;
+        gripperPosition = convertRobotCoord_2_CanvasCoord(this.RightSecondaryArm.pos2);
+
 
     }
 
@@ -441,13 +719,177 @@ class SecondaryArm {    //Need to come back to this once the robot class is defi
 
 
 // Payload Class
+class Payload {
+    constructor(mass, sizeX, sizeY, posX, posY){
+        this.mass = mass;
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.posX = posX;   // the x coordinate of the top center location of the payload in canvas coordinates
+        this.posY = posY;   // the y coordinate of the top center location of the payload in canvas coordinates
+
+        // Plot coordinates of the payload
+        this.plotPosX = this.posX - (this.sizeX / 2);
+        this.plotPosY = this.posY;
+
+        this.topCenter = [this.posX + (this.sizeX / 2), this.posY];
+        this.isGrabbed = false;
+        this.atStartPosition = true;
+        this.velX = 0;
+        this.velY = 0;
+        this.previousYVel = 0;
+        this.previousPosX = 0;
+        this.previousPosY = 0;
+
+        this.payloadFillStyle = '#B4EDD2';
+
+        this.onDropOff = false;
+    }
+
+    draw(){
+        ctx.beginPath();
+        ctx.strokeStyle = 'black';
+        ctx.fillStyle = this.payloadFillStyle;
+        ctx.lineWidth = 5;
+        ctx.strokeRect(this.plotPosX, this.plotPosY, this.sizeX, this.sizeY);
+        ctx.fillRect(this.plotPosX, this.plotPosY, this.sizeX, this.sizeY);
+        ctx.stroke();
+
+    }
+
+    updatePos(){
+        if (this.isGrabbed == true) {   // Movement instructions for when the payload is grabbed
+            // Storing the previous position. We will need this for the velocity calculation
+            this.previousPosX = this.plotPosX;
+            this.previousPosY = this.plotPosY;
+
+            // Updating our current X and Y position
+            this.posX = gripperPosition[0];
+            this.posY = gripperPosition[1];
+
+            // Updating the X and Y plot coordinate
+            this.plotPosX = this.posX - (this.sizeX / 2);
+            this.plotPosY = this.posY;
+
+            // Calculating our X and Y velocity
+            //this.previousYVel = this.velY;
+            this.velX = (this.plotPosX - this.previousPosX) / deltaT;
+            this.velY = (this.plotPosY - this.previousPosY) / deltaT;
+
+        } else if (this.onDropOff == true) {
+            // Just dont update the position if 
+            this.posX = this.posX;
+            this.posY = payloadRestingPosY + (this.sizeY / 2);
+            this.plotPosX = this.plotPosX;
+            this.plotPosY = payloadRestingPosY - 1;
+            this.velY = 0;
+            this.previousYVel = 0;
+
+            // Slowly reducing the x velocity (friction)
+            if (this.velX > 0.5) {
+                this.velX = this.velX * 0.95;
+
+            } else {
+                this.velX = 0;
+            }
+
+        } else if (this.isGrabbed == false && this.atStartPosition == false) {  // Movement instructions for falling payload
+            this.plotPosX = this.plotPosX + (this.velX * deltaT);   // X velocity does not change once the payload is dropped.
+            
+            // Handling the Y components of velocity and position
+            this.velY = this.velY + 50;
+            this.plotPosY = this.plotPosY + (this.velY * deltaT);
+
+            this.posX = this.plotPosX + (this.sizeX / 2);
+            this.posY = this.plotPosY;
+
+        }
 
 
+    }
+
+    reset(mass, sizeX, sizeY, posX, posY) {
+        this.mass = mass;
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.posX = posX;   // the x coordinate of the location of the payload. Measured from the top left corner of the rectangel in canvas coords
+        this.posY = posY;   // the y coordinate in canvas coords
+        this.topCenter = [this.posX + (this.sizeX / 2), this.posY];
+        this.isGrabbed = false;
+        this.atStartPosition = true;
+        this.velX = 0;
+        this.velY = 0;
+        this.previousYVel = 0;
+        this.previousPosX = 0;
+        this.previousPosY = 0;
+        this.onDropOff = false;
+
+        // Plot coordinates of the payload
+        this.plotPosX = this.posX - (this.sizeX / 2);
+        this.plotPosY = this.posY;
+    }
+
+    grabAttempt(){
+
+    }
+
+    grab(){
+
+    }
+}
 
 
 // Dropoff Class
+class DropOff {
+    constructor(posX, posY) {
+        this.length = 50;
+        this.thickness = 10;
+        this.posX = posX;   // X position of the center of the platform
+        this.posY = posY;   // Y position of the center of the platform
+        this.style = '#DDBEA8'; // Color of the dropoff zones
 
+    }
 
+    draw() {
+        ctx.beginPath();
+        ctx.strokeStyle = 'black';
+        ctx.fillStyle = this.style;
+        ctx.lineWidth = 5;
+        ctx.strokeRect(this.posX - (this.length / 2), this.posY - (this.thickness / 2), this.length, this.thickness);
+        ctx.fillRect(this.posX - (this.length / 2), this.posY - (this.thickness / 2), this.length, this.thickness);
+        ctx.stroke();
+    }
+
+    updatePos() {}
+
+    reset(posX, posY) {
+        this.posX = posX;
+        this.posY = posY;
+        payloadRestingPosY = this.posY - (this.thickness / 2) - payloadHeight;
+    }
+}
+
+// Score Counter Class
+class ScoreCounter {
+    constructor() {
+        this.scoreFontSize = 16;
+        this.scoreFontFamily = 'Helvetica';
+        this.scoreFontStyle = 'normal';
+        this.scoreText = `Score: ${score}`;
+        this.scorePosX = 10;
+        this.scorePosY = 20;
+    }
+
+    draw() {
+        // Drawing the score
+        ctx.font = this.scoreFontStyle + ' ' + this.scoreFontSize + 'pt ' + this.scoreFontFamily;
+        ctx.fillStyle = '#000'; // Text color
+        ctx.fillText(this.scoreText, this.scorePosX, this.scorePosY);
+        this.scoreText = `Score: ${score}`;
+    }
+
+    updatePos() {
+    }
+}
 
 // Event Listeners
 // Event listener for right arrow key
@@ -478,9 +920,20 @@ window.addEventListener("keyup", function (event) {
     }
 });
 
+// Event listener for space bar keypress - different from keydown or keyup
+window.addEventListener("keydown" , function(event){
+    if ((event.key === "Space" || event.key === " ") && game.Payload.isGrabbed == true) {
+        game.releaseGrab();
+    } else if ((event.key === "Space" || event.key === " ") && game.Payload.isGrabbed == false) {
+        game.grabAttempt();
+    }
+});
 
 
+<<<<<<< HEAD
 // Actual running of the game
+=======
+>>>>>>> Dev
 window.onload = function(){     //JS will wait for the entier page to load including all images and external content before trigging the window.onload
     canvas = document.getElementById('Canvas1');  //Creating a constant called canvas and setting it equal to the canvas1 canvas we created back in the HTML file
     ctx = canvas.getContext('2d');
@@ -504,11 +957,10 @@ window.onload = function(){     //JS will wait for the entier page to load inclu
     // 5. scale the context by the pixel ratio
     ctx.scale(ratio, ratio);
 
+    // 6. Display how to play popup
+    showHowToPlayPopup()
+    // 7. Run game 
     game = new Game();
     game.run();
 
 }
-
-
-
-

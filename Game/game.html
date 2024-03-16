@@ -7,7 +7,19 @@
         <link rel="stylesheet" href="style.css" />
     </head>
     <body>
-        <canvas id="Canvas1" width="500" height="500"></canvas>
+        <canvas id="Canvas1" width="500" height="400"></canvas>
+        <div id="howToPlayPopup" class="popup">
+            <div class="popup-contents">
+                <span class="close" onclick="closePopup()">&times;</span>
+                <h1>Pick & Place</h1>
+                <h3>By Nick Rohner</h3>
+                <p>This is Clint. He is a robot. You can control Clint's arms using the left and right arrow keys.</p>
+                <p>Use the spacebar to pick up green packages. To do this, you will need to position Clint's grabber close to the top of the package.</p>
+                <p>Press spacebar again to release the package. The goal is to place each package on top of its red drop zone.</p>
+                <p>Try to pick and place as many packages as you can!</p>
+            </div>
+        </div>
+        
         <script src="script.js"></script>
     </body>
 </html>
