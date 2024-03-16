@@ -21,7 +21,7 @@ const secondaryArmI = 1;
 
 // Physics Constants and Variables:
 const g = 9.81;    // Acceleration due to gravity
-const deltaT = 0.003        
+const deltaT = 0.0025        
 const frameTime = 1000/60    //Time step for 60 calculations per second. Will need to pair this with the animation function for it to work right
 
 // Canvas Constants:
@@ -68,10 +68,10 @@ var R2_canvas = convertRobotCoord_2_CanvasCoord([R2x, R2y]);
     //console.log('R = secondary arm lenght = ' + secondaryArmLength);
 
 //Debug Print Statements for Canvas Coordinates
-    console.log('L1 = ' + L1_canvas);
-    console.log('L2 = ' + L2_canvas);
-    console.log('R1 = ' + R1_canvas);
-    console.log('R2 = ' + R2_canvas);
+    //console.log('L1 = ' + L1_canvas);
+    //console.log('L2 = ' + L2_canvas);
+    //console.log('R1 = ' + R1_canvas);
+    //console.log('R2 = ' + R2_canvas);
     
 
 // Working Area Calculations - all values in robot coordinat system
@@ -80,7 +80,6 @@ var workingRangeLeftBound = findWorkingAreaXIntersect(L1x, L1y, R2x, R2y, second
 var workingRangeRightBound = -1 * workingRangeLeftBound;
 
 var test = generateReachablePosition()
-console.log(test);
 
 // Initial angle for the right and left arms.
 var thetaStartR = 0;
@@ -205,33 +204,27 @@ function generateReachablePosition() {  // Generates a random position within th
     // 1. Generate a random value between left working range limit and 0
     var xRange = (0 - workingRangeLeftBound) + 1;  // we add 1 at the end to make it inclusive
     var random_decimal = Math.random();
-    var negXCoord = random_decimal * xRange;
+    var negXCoord = -1 * random_decimal * xRange;
 
-    // 2. Calculate upper and lower Y limits with a 0.9 multiplier
-    var yLowerLimit = 0.9 * (L1y + Math.sqrt((-1 * L1x**2) + (2 * L1x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
-    var under_the_root = (-1 * L1x**2) + (2 * L1x * negXCoord) + (secondaryArmLength**2) - negXCoord**2;
-    console.log("Under the root: " + under_the_root);
-
-
-    var yUpperLimit = 0.9 * (R2y + Math.sqrt((-1 * R2x**2) + (2 * R2x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
-
-    console.log(yLowerLimit);
-    console.log(yUpperLimit);
+    // 2. Calculate upper and lower Y limits with a 0.9 multiplier on the lower limit
+    var yLowerLimit = 1.1 * (L1y + Math.sqrt((-1 * L1x**2) + (2 * L1x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
+    var yUpperLimit = (R2y + Math.sqrt((-1 * R2x**2) + (2 * R2x * negXCoord) + (secondaryArmLength**2) - negXCoord**2));
 
     // 3. Generate random number between upper and lower Y bounds
     var yRange = (yUpperLimit - yLowerLimit) + 1;
     random_decimal = Math.random();
-    var yCoord = random_decimal * yRange;
+    var yCoord = random_decimal * yRange + (yLowerLimit);
+
+    // Checking the YUpperLimit is correct
+    //ar yCoord = yLowerLimit;
 
     // 4. Multiply negative X coord by a random 1 or -1
     var xCoord = randomSign() * negXCoord;
 
-    return convertRobotCoord_2_CanvasCoord([xCoord, yCoord]);
+    
     
     // 5. Convert X and Y coords to canvas coords
-    //let pointInCanvasCoords = convertRobotCoord_2_CanvasCoord([xCoord, yCoord]);
-    
-    //return pointInCanvasCoords;
+    return convertRobotCoord_2_CanvasCoord([xCoord, yCoord]);
 
 }
 
@@ -265,10 +258,10 @@ class Game {
         this.scoreCounter = new ScoreCounter();
 
         // Debugging
-        this.Debugger = new Debugger;
+        //this.Debugger = new Debugger;
 
         // Draw List
-        this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff, this.Debugger];
+        this.#drawList = [this.scoreCounter, this.Robot, this.Payload, this.DropOff];
         this.lastFrameTime = 0;
         this.timer = 0;
         this.payloadDropOffCounter = 0;
@@ -356,9 +349,6 @@ class Game {
                     score = score + 1;
                     let newPayloadPoint = generateReachablePosition();
                     let newDropOffPoint = generateReachablePosition();
-
-                    console.log("New Payload Point: " + newPayloadPoint);
-                    console.log("New Dropoff Point: " + newDropOffPoint);
 
                     this.Payload.reset(1, payloadWidth, payloadHeight, newPayloadPoint[0], newPayloadPoint[1]);   // Eventually these will need to be dynamic position values.
                     this.DropOff.reset(newDropOffPoint[0], newDropOffPoint[1]);   // Will need to be dynamnic values in the future.
