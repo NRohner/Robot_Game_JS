@@ -925,11 +925,11 @@ window.addEventListener("keydown" , function(event){
     }
 });
 
-window.addEventListener("keydown", function (event) {
+/* window.addEventListener("keydown", function (event) {
     if (event.key === "p") {
         pause = !pause;
     }
-});
+}); */
 
 // Actual running of the game
 
